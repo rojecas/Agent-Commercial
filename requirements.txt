@@ -1,23 +1,74 @@
-# Core LLM y API
+# ==========================================
+# CEREBRO Y RAZONAMIENTO IA
+# ==========================================
+# openai: Cliente oficial para comunicarnos con ChatGPT o DeepSeek (usan la misma sintaxis). 
+# Elegida por su madurez y ser el estándar dorado de la industria para llamadas LLM.
 openai==1.14.0
 
-# Framework web y asincronismo (para Webhooks y Websockets)
+# ==========================================
+# SERVIDOR WEB Y TIEMPO REAL
+# ==========================================
+# fastapi: Framework para construir el servidor y los Webhooks. 
+# Elegido porque es asíncrono, hiper-rápido y autogenera documentación técnica (Swagger).
 fastapi==0.110.0
+# uvicorn: El "motor" que corre la aplicación de FastAPI dentro del servidor Linux/Docker.
 uvicorn==0.29.0
+# websockets: Librería pura de Python para conexiones en tiempo real.
+# Elegida para que el Widget de la página web chatee fluidamente y sin lag con el bot.
 websockets==12.0
 
-# Base de datos
+# ==========================================
+# BASE DE DATOS Y ORM
+# ==========================================
+# pymysql: El driver (conector) puro de Python que permite hablarle a bases de datos MySQL (síncrono).
 pymysql==1.1.0
+# aiomysql: El driver ASÍNCRONO para MySQL.
+# Elegido obligatoriamente para producción con FastAPI. Evita que el servidor Python se "congele" 
+# esperando que MySQL guarde un mensaje, permitiendo atender a miles de usuarios a la vez en tiempo real.
+aiomysql==0.2.0
+# cryptography: Requerido por algunos sistemas modernos para cifrar conexiones MySQL de forma segura.
 cryptography==42.0.5
-sqlalchemy==2.0.28   # Opcional, si queremos usar ORM para lectura, o solo pymysql
+# sqlalchemy: El ORM (Object-Relational Mapper). 
+# Elegido para poder programar las bases de datos (Users, Messages) como "Clases" de Python (models.py) 
+# en lugar de escribir consultas crudas 'SELECT * FROM..'. Evita inyecciones SQL y facilita todo.
+sqlalchemy==2.0.28
 
-# Utilidades y configuración
+# ==========================================
+# UTILIDADES Y CONFIGURACIÓN
+# ==========================================
+# python-dotenv: Carga automáticamente el archivo `.env` garantizando que las contraseñas no se suban al código.
 python-dotenv==1.0.1
+# pydantic: Librería de validación de datos (compañera inseparable de FastAPI).
+# Elegida para asegurar que los JSONs y payloads de la IA cumplan estrictamente el formato esperado.
 pydantic==2.6.4
 
-# Peticiones HTTP (ej. para enviar cosas a Telegram manual o WhatsApp API)
+# ==========================================
+# PETICIONES Y COMUNICACIÓN EXTERNA
+# ==========================================
+# requests (síncrona) / httpx (asíncrona): Librerías para hacer llamadas HTTP a otras APIs.
+# Elegidas para que el Bot pueda mandar mensajes manuales a WhatsApp o consultar la API de PHP.
 requests==2.31.0
 httpx==0.27.0
 
-# Limpieza HTML
+# ==========================================
+# PROCESAMIENTO DE DATOS EXTERNOS
+# ==========================================
+# beautifulsoup4: El estándar mundial en Python para parsear y limpiar código HTML.
+# Elegida ESPECÍFICAMENTE porque la base de datos de PHP tiene las descripciones de los 
+# productos llenas de etiquetas HTML (<b>, <p>, <br>). BeautifulSoup limpiará y extraerá 
+# solo el texto humano puro antes de pasárselo a la IA para que no enloquezca.
 beautifulsoup4==4.12.3
+
+# ==========================================
+# RAG: BUSQUEDA INTELIGENTE DE PRODUCTOS (Opción C)
+# ==========================================
+# chromadb: Base de Datos Vectorial ultraligera y embebible.
+# Elegida porque a diferencia de Pinecone, es OPEN SOURCE y puede correr gratis y 
+# aislada dentro de nuestro propio contenedor Docker sin pagar nubes de terceros.
+chromadb==0.4.24
+# sentence-transformers: Librería matemática de HuggingFace.
+# Es el "traductor" mágico. Se encarga de leer el texto limpio ("Medidor de pH para agua cruda")
+# y convertirlo con Redes Neuronales en un gigantesco arreglo de números (Vector Espacial) 
+# para que ChromaDB pueda hacer la búsqueda geométrica y encontrar el producto perfecto.
+sentence-transformers==2.5.1
+

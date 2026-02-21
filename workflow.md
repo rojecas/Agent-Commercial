@@ -42,8 +42,8 @@ git init
 ```
 2. Añade los archivos iniciales al área de preparación (stage) y crea el primer commit:
 ```bash
-git add .
-git commit -m "chore: setup inicial del entorno docker, ERS y estructura de directorios"
+git add . # Alista todos los archivos nuevos para el commit
+git commit -m "chore: setup inicial del entorno docker, ERS y estructura de directorios" # Crea el commit inicial
 ```
 3. Crea un repositorio vacío en GitHub (sin README, ni .gitignore, ni licencia para evitar conflictos).
 4. Vincula tu repositorio local con el de GitHub y sube los cambios (reemplaza `<TU_USUARIO>` y `<TU_REPO>`):
@@ -57,23 +57,30 @@ git push -u origin main
 Si deseas trabajar con el entorno virtual localmente (fuera de Docker) para beneficiarte del autocompletado en tu IDE:
 ```bash
 python -m venv venv
-# Activar en Windows:
+# Activar en Windows con cmd:
 .\venv\Scripts\activate
+# Activar en Windows con Git Bash:
+./venv/Scripts/activate
 # Activar en Linux/Mac:
 source venv/bin/activate
 
-pip install -r requirements.txt
+pip install -r requirements.txt # Instala las dependencias de Python
 ```
 
 ### Paso 3.4: Construir y Levantar Contenedores con Docker
-Este es el método recomendado para garantizar que todos los desarrolladores tengan el mismo entorno.
+Este es el método recomendado para garantizar que todos los desarrolladores tengan el mismo entorno. Aislará nuestro Agente Comercial del sistema operativo anfitrión.
 
 1. Abre una terminal en la raíz del proyecto.
 2. Construye la imagen y levanta los servicios en segundo plano:
 ```bash
 docker-compose up --build -d
 ```
-3. Para verificar que el agente está corriendo correctamente (Daemon), revisa los logs:
+> **¿Qué hace este comando internamente?**
+> *   **Construir (`--build`):** Lee nuestro `Dockerfile`. Descarga una versión de Linux mínima y ultra estable con **Python 3.11** puro preinstalado (ignorando la versión insegura o experimental de Python que tengas instalada en tu equipo Windows). Copia nuestro código e instala las dependencias de `requirements.txt` automáticamente sin pedirte compiladores de C++ o Rust adicionales.
+> *   **Levantar (`up`):** Enciende una copia viviente de esa imagen construida. Esta copia se llama **Contenedor** (lo verás en Docker Desktop como `inasc_agent_backend` bajo el grupo `agent-commercial`). 
+> *   **Fondo (`-d`):** Desvincula la ejecución (Detached mode). Deja el contenedor corriendo 24/7 en segundo plano como un demonio y te devuelve el control de la terminal. Todos los archivos de tu carpeta `/src` se enlazan "en caliente" al contenedor, permitiéndote cambiar código sin necesidad de reconstruir la imagen.
+
+3. Para verificar que el agente está corriendo correctamente (Daemon) y visualizar las salidas de consola (print):
 ```bash
 docker-compose logs -f app
 ```

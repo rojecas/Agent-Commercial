@@ -80,12 +80,12 @@ El *System Prompt* instruirá al LLM para no terminar la conversación de captac
 ### 3.2 Cómo se le presenta la información al Usuario Final
 - **Formato Conversacional Corto:** Los mensajes del bot vía WA/TG deben ser de **máximo 2 párrafos**.
 - **Evitar Markdown Complejo:** Muchos clientes en WhatsApp no leen bien formatos complejos. Se usarán emojis estratégicos y negritas simples (`*texto*`).
-- **Llamados a la Acción (CTA) Claros:** Siempre terminar con una pregunta clara, ej: *"Comprendo el problema con el inventario. ¿Podrías indicarme a qué correo podemos enviarle la propuesta técnica?"*
+- **Llamados a la Acción (CTA) Claros:** Siempre terminar con una pregunta clara, ej: *"Comprendo el problema con el tiempo de entrega requerido. ¿Podrías indicarme a qué correo podemos enviarle la propuesta técnica, que incluya esta información?"*
 
 ### 3.3 El Proceso de Entrega (Handoff)
 Una vez que el JSON (Sección 3.1) está completo, el bot ejecutará la herramienta `push_lead_to_crm(payload)`. 
 * Si es soporte crítico, la herramienta avisará a un humano (vía Slack/Teams) para tomar control de la sesión (Handoff).
-* El bot responderá al usuario: *"¡Perfecto Juan! He registrado tu caso. Un asesor técnico revisará los detalles y te contactará en breve."*
+* El bot responderá al usuario: *"¡Perfecto Ing Lopez! He registrado su caso. Un asesor técnico revisará los detalles y te contactará en breve."*
 
 ---
 
