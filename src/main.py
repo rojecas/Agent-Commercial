@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="INASC Commercial Agent API",
     description="Multi-Tenant Async Brain for Conversational Sales",
-    version="1.1.0",
+    version="Beta 1.0.0",
     lifespan=lifespan
 )
 
