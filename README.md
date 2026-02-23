@@ -126,3 +126,18 @@ Este proyecto se maneja estrictamente usando **Issues**. Ninguna funcionalidad (
    ```bash
    docker exec -it inasc_agent_backend alembic upgrade head
    ```
+
+---
+
+## 🧪 Estrategia de Calidad y Pruebas (Test-Driven)
+
+Para asegurar la fiabilidad del agente autónomo, el proyecto requiere validación estricta utilizando el framework `pytest`. La estructura de pruebas está dividida en 3 carpetas dentro de `/tests`:
+
+1.  **Unit Tests (`tests/unit/`):** Validan módulos aislados y lógica pura de negocio (por ejemplo, el formateo de prompts, respuestas del SDK de OpenAI o el ruteo interno) mockeando las dependencias.
+2.  **Integration Tests (`tests/integration/`):** Comprueban cómo interactúan múltiples componentes entre sí (como BBDD + SQLAlchemy + Asyncio Queue).
+3.  **Functional Tests (`tests/functional/`):** Simulan el comportamiento end-to-end simulando Webhooks de clientes o peticiones REST completas contra FastAPI.
+
+**Para correr el entorno de pruebas local:**
+```bash
+pytest tests/ -v
+```
