@@ -28,25 +28,44 @@ El sistema fue diseñado desde el primer día para ser **SaaS Ready**. Cada tabl
 
 ```mermaid
 erDiagram
-    users ||--o{ conversations : "has"
+    companies ||--o{ company_divisions : "has"
+    company_divisions ||--o{ users : "employs"
+    users ||--o{ conversations : "initiates"
     users ||--o{ leads_opportunities : "creates"
     conversations ||--o{ messages : "contains"
     leads_opportunities ||--o{ opportunity_product_recommendations : "receives"
 
+    companies {
+        BigInteger id PK
+        String name
+        String fiscal_id "NIT/RUT"
+        String crm_company_id "External CRM Link"
+        String tenant_id
+        Boolean is_deleted
+    }
+
+    company_divisions {
+        BigInteger id PK
+        BigInteger company_id FK
+        String name "Lab Aguas, Compras, etc"
+        String crm_division_id "External CRM Link"
+        String tenant_id
+        Boolean is_deleted
+    }
+
     users {
         BigInteger id PK
+        BigInteger division_id FK
         String full_name
         String email
         String phone_number
-        String company_name
-        String platform "e.g., telegram, whatsapp"
+        String crm_contact_id "External CRM Link"
+        String platform "telegram, whatsapp"
         String platform_user_id
         Text problem_statement
         String tenant_id
         Boolean is_deleted
-        DateTime deleted_at
         DateTime created_at
-        DateTime updated_at
     }
 
     conversations {
@@ -95,6 +114,17 @@ erDiagram
     }
 ```
 
+---
+
+## 🔌 Integración Futura con CRM
+
+El agente está diseñado desde la base de datos para funcionar de manera simbiótica con cualquier CRM moderno (Especialmente para integraciones SaaS B2B). Las reglas arquitectónicas implementadas son:
+
+1. **Jerarquía B2B estricta (Estilo LDAP):** En la base de datos, un Agente/Prospecto (`User`) pertenece inevitablemente a un Laboratorio/Área (`CompanyDivision`) que a su vez consolida dentro de un Cliente Principal (`Company`).
+2. **Sincronización Bidireccional de IDs:** Todas las entidades core contemplan un campo `crm_*_id` (Ej: `crm_contact_id`, `crm_company_id`). Si el bot es invocado *desde* la UI de un CRM existente, el CRM puede enviar su ID único para inyectar contexto histórico al Agente de forma transparente.
+3. **Inyección Dinámica de Contexto:** A través del Pydantic Model `IncomingMessage.metadata`, las integraciones externas (CRMs o ERPs) pueden pasar variables enriquecidas al vuelo (Ej. "Es un cliente VIP", "Tiene Ticket Fallando"), que el agente inyecta en su **SYSTEM PROMPT** para brindar soporte personalizado.
+4. **Respeto Multi-Tenant:** Ninguna integración dependerá de variables o IDs "quemados" (Hardcoded). Todo el aislamiento se rige por el paso obligatorio del token/llave `tenant_id` en cada conexión o consulta a base de datos.
+ 
 ---
 
 ## 🧠 El Cerebro Asíncrono (Async Brain)

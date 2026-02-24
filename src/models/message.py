@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 class IncomingMessage(BaseModel):
     """
@@ -17,7 +17,7 @@ class IncomingMessage(BaseModel):
     user_name: Optional[str] = Field(default=None, description="The display name of the user if provided by the platform")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Any additional platform-specific payload data")
     
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AgentResponse(BaseModel):
     """
