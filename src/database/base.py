@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, declared_attr
 
@@ -25,7 +25,7 @@ class SoftDeleteMixin:
     def soft_delete(self):
         """Marks the record as deleted and records the timestamp."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
         
     def restore(self):
         """Restores a soft-deleted record."""
@@ -36,5 +36,5 @@ class AuditableMixin:
     """
     Mixin to automatically track creation and update timestamps of records.
     """
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

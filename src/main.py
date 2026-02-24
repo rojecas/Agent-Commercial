@@ -5,11 +5,61 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 
 from src.core.queue_manager import queue_manager
+from src.core.llm import llm_engine
+from src.database.connection import async_session_factory
+from src.database import crud
 
 # Setup environment variables configuration
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+async def process_single_message(message):
+    """
+    Worker individual que procesa el mensaje de UNA sola conversación concurrente.
+    Al crearse como una Task independiente de Asyncio, Aisla totalmente a un Tenant de otro o
+    a un Prospecto A de un Prospecto B.
+    """
+    try:
+        # Abrimos Sesión de BD por Transacción
+        async with async_session_factory() as session:
+            # 2. Recuperar el contexto de la BD cruzando Tenant y Usuario
+            user = await crud.get_or_create_user(session, message)
+            conversation = await crud.get_or_create_active_conversation(session, user.id, message.tenant_id)
+            
+            # Guardamos el mensaje entrante del prospecto
+            await crud.save_message(session, conversation.id, message.tenant_id, role="user", content=message.content)
+            
+            # Recuperamos el historial de memoria dinámico (Últimos 10 mensajes)
+            context = await crud.get_conversation_history(session, conversation.id, message.tenant_id, limit=10)
+            
+            # 3. Call LLM (DeepSeek)
+            logger.info(f"[{message.tenant_id}] 🤔 Thinking about message from {message.platform_user_id}: '{message.content}'...")
+            
+            # Llamada Asíncrona al Motor LLM
+            response_text = await llm_engine.generate_response(context, tenant_id=message.tenant_id)
+            
+            # 4. Guardar la respuesta generada por el agente en la base de datos
+            await crud.save_message(session, conversation.id, message.tenant_id, role="assistant", content=response_text)
+            
+            # 5. ¡Commit! Guardamos todo permanentemente en MySQL si ocurrió sin errores
+            await session.commit()
+            
+            logger.info(f"[{message.tenant_id}] ✅ Finished and saved to DB. LLM Response: {response_text[:50]}...")
+            
+            # 6. Route Response back to the Producer's send method (FUTURE TODO)
+        from src.models.message import AgentResponse
+        agent_response = AgentResponse(
+            recipient_id=message.platform_user_id,
+            content=response_text
+        )
+        logger.info(f"[{message.tenant_id}] 📤 Prepared Response Object to be routed: {agent_response.model_dump()}")
+        
+    except Exception as e:
+        logger.error(f"[{message.tenant_id}] Error in worker processing message: {e}")
+    finally:
+        # Siempre marcar la tarea principal de la cola como hecha
+        queue_manager.mark_task_done()
 
 async def run_agent_loop():
     """
@@ -24,25 +74,14 @@ async def run_agent_loop():
             message = await queue_manager.get_message()
             logger.info(f"📥 Agent picked up message from: {message.platform_user_id} on {message.platform}")
             
-            # FUTURE TODO: 
-            # 2. Retrieve Conversation Context from DB
-            # 3. Call LLM (DeepSeek)
-            # 4. Extract Tools/Skills
-            # 5. Route Response back to the Producer's send method
-            
-            # Simulate intense LLM processing time for the dummy version
-            logger.info(f"🤔 Thinking about message: '{message.content}'...")
-            await asyncio.sleep(2)
-            
-            logger.info(f"✅ Finished processing message from {message.platform_user_id}")
+            # Lanzamos una tarea de Background (Worker Concurrente) y seguimos vaciando el buzón INMEDIATAMENTE
+            asyncio.create_task(process_single_message(message))
             
         except asyncio.CancelledError:
             logger.warning("Agent Loop was cancelled. Shutting down brain safely.")
             break
         except Exception as e:
-            logger.error(f"Error in Agent Loop: {e}")
-        finally:
-            queue_manager.mark_task_done()
+            logger.error(f"Error in Orchestrator Loop: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
