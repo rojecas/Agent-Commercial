@@ -163,11 +163,27 @@ Este proyecto se maneja estrictamente usando **Issues**. Ninguna funcionalidad (
 
 Para asegurar la fiabilidad del agente autónomo, el proyecto requiere validación estricta utilizando el framework `pytest`. La estructura de pruebas está dividida en 3 carpetas dentro de `/tests`:
 
-1.  **Unit Tests (`tests/unit/`):** Validan módulos aislados y lógica pura de negocio (por ejemplo, el formateo de prompts, respuestas del SDK de OpenAI o el ruteo interno) mockeando las dependencias.
-2.  **Integration Tests (`tests/integration/`):** Comprueban cómo interactúan múltiples componentes entre sí (como BBDD + SQLAlchemy + Asyncio Queue).
-3.  **Functional Tests (`tests/functional/`):** Simulan el comportamiento end-to-end simulando Webhooks de clientes o peticiones REST completas contra FastAPI.
+1.  **Unit Tests (`tests/unit/`):** Validan módulos aislados y lógica pura de negocio (por ejemplo, el formateo de prompts o la capa de integración del LLM) mockeando las dependencias externas.
+2.  **Integration Tests (`tests/integration/`):** Comprueban la interacción real entre SQLAlchemy + MariaDB + Asyncio. Verifican que el flujo completo de persistencia funciona correctamente (crear usuario, abrir conversación, guardar mensajes, recuperar historial).
+3.  **Functional Tests (`tests/functional/`):** Simulan el comportamiento end-to-end inyectando Webhooks completos contra FastAPI.
 
-**Para correr el entorno de pruebas local:**
+### Prerequisito: Base de datos de pruebas
+
+Los tests de integración corren contra una base de datos MariaDB aislada (`comm_agent_test`). Para crearla la primera vez:
 ```bash
-pytest tests/ -v
+python create_test_db.py
 ```
+
+### Correr los tests de integración
+
+```bash
+venv/Scripts/python.exe -m pytest tests/integration/ -v
+```
+
+**Resultado actual (Issue #3):**
+```
+tests/integration/test_crud.py::test_create_and_link_b2b_hierarchy  PASSED
+tests/integration/test_crud.py::test_crud_chat_flow                  PASSED
+2 passed, 0 warnings
+```
+
