@@ -89,8 +89,6 @@ Una vez que el JSON (Sección 3.1) está completo, el bot ejecutará la herramie
 
 ---
 
----
-
 ## ⚡ 4. Escalabilidad del Motor LLM: Pool Dinámico de API Keys (RF06)
 
 ### 4.1 Problema que Resuelve
