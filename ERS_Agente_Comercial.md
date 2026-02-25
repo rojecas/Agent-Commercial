@@ -83,6 +83,12 @@ Para garantizar la fluidez en canales externos (Telegram, WhatsApp) y evitar el 
 *   **Proxy Inverso (Obligatorio):** Se requerirá **Nginx** o equivalente para el manejo y terminación de certificados SSL explícitamente necesarios para el registro seguro de Webhooks, además del mapeo de puertos internos hacia la web pública (80/443).
 *   **Recurrencia/Caída (Fallback):** Si el LLM no responde por cuellos de botella en la red, el sistema pasará a un conjunto de respuestas estáticas disculpándose e indicando canales humanos.
 
+**RF06 - Gestión Dinámica del Pool de API Keys del LLM:**
+Para garantizar la disponibilidad del servicio bajo alta concurrencia de múltiples tenants y prospectos simultáneos, el sistema implementará un **pool de cuentas de LLM**, donde cada cuenta posee su propia API Key con budget de rate-limit independiente. Las conversaciones activas se asignarán dinámicamente a la key con menor carga según el criterio *Least-Connections* (menor número de conversaciones activas en ese momento). Una conversación permanecerá asignada a la misma key durante toda su duración. El sistema deberá:
+1. Exponer en el endpoint `/metrics` (o `/health`) el estado del pool: conversaciones activas por key, porcentaje de capacidad por key, y capacidad total del pool.
+2. Emitir una **alerta operacional** (log de nivel CRITICAL / notificación) cuando el pool supere el **80% de su capacidad pico sostenida**, para que el equipo de operaciones pueda evaluar la adquisición de cuentas adicionales.
+3. Liberar la asignación de key automáticamente cuando el prospecto desconecte el WebSocket o la sesión expire.
+
 ### 3.5 Integración de Base de Conocimiento (Catálogo de Productos)
 *   **Acceso Controlado a Datos:** El agente leerá la información técnica conectándose directamente a la base de datos MySQL (tablas `i3_productos`, `i3_categorias`, `in_columnas`), pero **exclusivamente a través de interfaces (`tools`) programadas en Python**, eliminando cualquier riesgo de modificación accidental o maliciosa (Inyección SQL).
 *   **Limpieza de Datos (Sanitización):** Los campos técnicos y descriptivos de la base de datos están en formato de texto enriquecido (HTML). El sistema implementará un middleware en Python que extraiga y elimine estas etiquetas HTML antes de inyectar el contexto al LLM, reduciendo el consumo de tokens.

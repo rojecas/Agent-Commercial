@@ -89,6 +89,57 @@ Una vez que el JSON (Sección 3.1) está completo, el bot ejecutará la herramie
 
 ---
 
+## ⚡ 4. Escalabilidad del Motor LLM: Pool Dinámico de API Keys (RF06)
+
+### 4.1 Problema que Resuelve
+
+El rate-limit del proveedor LLM (DeepSeek) se aplica **por API Key**. Con una sola key compartida entre todos los tenants y prospectos, los clientes compiten por el mismo budget de requests/minuto. Bajo alta concurrencia esto produce errores `429 Too Many Requests` y degradación perceptible de la experiencia del usuario.
+
+### 4.2 Componente: `LLMKeyPool`
+
+Se introducirá el componente `LLMKeyPool` (singleton) que reemplaza al actual `LLMEngine` singleton de key única. Mantiene un pool de clientes `AsyncOpenAI`, cada uno con su propia API Key (y por ende su propio budget de rate-limit independiente).
+
+```
+                    ┌─────────────────────────────┐
+process_single_     │        LLMKeyPool           │
+message(msg)───────►│  acquire(conversation_id)   │
+                    │                             │
+                    │  Key A: 8 conversaciones    │
+                    │  Key B: 3 ← asignar esta   │
+                    │  Key C: 11 conversaciones   │
+                    │                             │
+                    │  release(conversation_id)   │
+                    └─────────────────────────────┘
+```
+
+**Regla de asignación:** *Least-Connections* — se asigna la key con menor número de conversaciones activas en ese instante.
+
+**Pinning por conversación:** Una vez asignada, la conversación queda "pinneada" a esa key durante toda su duración. Se libera automáticamente al recibir el evento `WebSocketDisconnect` del `ConnectionManager`.
+
+### 4.3 Punto de Extensión en el Código Actual
+
+El `tenant_id` y el `platform_user_id` ya viajan hasta `generate_response()` en `llm.py`. El cambio es quirúrgico: solo afecta a `LLMEngine` → `LLMKeyPool` y al endpoint `/health` → `/metrics`. **El Queue, el ConnectionManager, los Producers y la BD no se modifican.**
+
+### 4.4 Endpoint de Monitoreo `/metrics`
+
+```json
+{
+  "pool_status": [
+    { "key_id": "key_a", "active_conversations": 8,  "capacity_pct": 53 },
+    { "key_id": "key_b", "active_conversations": 3,  "capacity_pct": 20 },
+    { "key_id": "key_c", "active_conversations": 11, "capacity_pct": 73 }
+  ],
+  "total_active": 22,
+  "pool_capacity_pct": 49,
+  "alert": false
+}
+```
+
+- **Umbral de alerta:** `pool_capacity_pct >= 80` sostenido en horas pico → señal para adquirir cuentas adicionales.
+- **Tope por key:** calculado empíricamente con los tests de rendimiento (Locust) — aproximadamente `RPM_limite / mensajes_promedio_por_minuto_por_conversacion`.
+
+---
+
 ## 🛠️ Conclusión Técnica para el Equipo Backend
 
 La migración hacia este nuevo bot requiere **modificar menos del 15% del núcleo del sistema actual**. El esfuerzo principal radicará en:
