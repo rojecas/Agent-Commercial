@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 
 from src.core.queue_manager import queue_manager
+from src.core.connection_manager import connection_manager
 from src.core.llm import llm_engine
 from src.database.connection import async_session_factory
 from src.database import crud
@@ -53,7 +54,14 @@ async def process_single_message(message):
             recipient_id=message.platform_user_id,
             content=response_text
         )
-        logger.info(f"[{message.tenant_id}] 📤 Prepared Response Object to be routed: {agent_response.model_dump()}")
+        logger.info(f"[{message.tenant_id}] 📤 Routing response to '{message.platform}' channel for '{message.platform_user_id}'")
+
+        # Ruteo de respuesta al canal de origen.
+        # Si el mensaje vino por WebSocket (platform='web'), send_to_client() deposita
+        # response_text en la cola privada del cliente y el endpoint WS lo reenvía.
+        # Si vino por otro canal (Telegram, WhatsApp), send_to_client() hace pass silencioso
+        # — backwards compatible, sin romper ningún canal existente.
+        await connection_manager.send_to_client(message.platform_user_id, response_text)
         
     except Exception as e:
         logger.error(f"[{message.tenant_id}] Error in worker processing message: {e}")
@@ -107,7 +115,9 @@ app = FastAPI(
 
 # Import and mount our routers
 from src.api.routers import simulator
+from src.api.routers import websocket
 app.include_router(simulator.router)
+app.include_router(websocket.router)
 
 @app.get("/")
 def read_root():
