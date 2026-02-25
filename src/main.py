@@ -48,7 +48,6 @@ async def process_single_message(message):
             
             logger.info(f"[{message.tenant_id}] ✅ Finished and saved to DB. LLM Response: {response_text[:50]}...")
             
-            # 6. Route Response back to the Producer's send method (FUTURE TODO)
         from src.models.message import AgentResponse
         agent_response = AgentResponse(
             recipient_id=message.platform_user_id,
