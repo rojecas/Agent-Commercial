@@ -1,7 +1,16 @@
 import os
 import logging
+import traceback
 from typing import List, Dict, Any, Optional
 from openai import AsyncOpenAI
+from dotenv import load_dotenv
+
+# Cargar .env explícitamente aquí porque llm_engine se instancia a nivel
+# de módulo (singleton), ANTES de que main.py ejecute su propio load_dotenv().
+# Sin este load_dotenv(), os.getenv('DEEPSEEK_API_KEY') retorna None cuando el
+# módulo se importa, ya que Python ejecuta el cuerpo del módulo antes de que
+# main.py llegue a llamar a su propio load_dotenv().
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +58,12 @@ class LLMEngine:
             
             return response.choices[0].message.content
         except Exception as e:
-            logger.error(f"Error communicating with DeepSeek: {e}")
+            logger.error(
+                f"Error communicating with DeepSeek:\n"
+                f"  Type   : {type(e).__name__}\n"
+                f"  Message: {e}\n"
+                f"  Traceback:\n{traceback.format_exc()}"
+            )
             return "Lo lamento, en este momento me encuentro experimentando interferencia en mis sistemas centrales. ¿Podría intentarlo de nuevo en unos minutos?"
 
 # Instancia global (Patrón Singleton) a inyectar
