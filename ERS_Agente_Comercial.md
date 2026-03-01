@@ -78,10 +78,22 @@ Para garantizar la fluidez en canales externos (Telegram, WhatsApp) y evitar el 
 *   **Arquitectura Webhook (Push):** La integración con las APIs de Telegram y el futuro WhatsApp Cloud API se realizará mediante Webhooks. El servidor Nginx expondrá endpoints seguros (`https://inasc.com.co/api/webhook/telegram`) que recibirán notificaciones en tiempo real (Push) directamente desde los servidores de Meta/Telegram en el milisegundo exacto en que el usuario envía un mensaje.
 
 ### 3.4 Requisitos de Despliegue (Infraestructura)
+
+#### Entorno de Desarrollo (activo)
+*   **Runtime local:** Python 3.14 + `uvicorn` corriendo en `127.0.0.1:8000`.
+*   **Túnel HTTPS:** **ngrok 3.36.0** expone el servidor local con una URL pública HTTPS (`https://<id>.ngrok-free.app`), permitiendo registrar webhooks de Telegram sin servidor público.
+*   **Base de datos:** MySQL local (`127.0.0.1:3306`, DB: `comm_agent`).
+*   **Flujo de arranque:** Terminal 1 → `uvicorn` | Terminal 2 → `ngrok http 8000` | Registro único en Telegram vía `setWebhook`.
+
+#### Entorno de Producción (pendiente de aprovisionamiento)
+*   **Proveedor:** Hostinger — cuenta existente `u851602756`. El plan actual (Premium Web Hosting shared) **no es apto** para daemons Python; se contratará un **VPS KVM1** (~USD 5–10/mes) con IP pública dedicada.
 *   **Entorno de Ejecución:** El artefacto completo (backend Python) correrá en contenedores **Docker**, estandarizados mediante `docker-compose`.
-*   **Sistema Operativo Base:** Servidor/Máquina Virtual basada en Linux (ej. Debian/Ubuntu).
-*   **Proxy Inverso (Obligatorio):** Se requerirá **Nginx** o equivalente para el manejo y terminación de certificados SSL explícitamente necesarios para el registro seguro de Webhooks, además del mapeo de puertos internos hacia la web pública (80/443).
+*   **Sistema Operativo Base:** Ubuntu 22.04 LTS (imagen estándar Hostinger VPS).
+*   **Proxy Inverso (Obligatorio):** **Nginx** con certificado SSL automático (Let's Encrypt) expondrá el endpoint `/webhook/telegram` bajo `https://inasc.com.co`. Nginx redirigirá el tráfico internamente a `http://127.0.0.1:8000`.
 *   **Recurrencia/Caída (Fallback):** Si el LLM no responde por cuellos de botella en la red, el sistema pasará a un conjunto de respuestas estáticas disculpándose e indicando canales humanos.
+*   **Migración dev → prod:** La URL del webhook de Telegram debe actualizarse con `setWebhook` al nuevo dominio del VPS. Telegram solo acepta un webhook activo a la vez.
+
+
 
 **RF06 - Gestión Dinámica del Pool de API Keys del LLM:**
 Para garantizar la disponibilidad del servicio bajo alta concurrencia de múltiples tenants y prospectos simultáneos, el sistema implementará un **pool de cuentas de LLM**, donde cada cuenta posee su propia API Key con budget de rate-limit independiente. Las conversaciones activas se asignarán dinámicamente a la key con menor carga según el criterio *Least-Connections* (menor número de conversaciones activas en ese momento). Una conversación permanecerá asignada a la misma key durante toda su duración. El sistema deberá:

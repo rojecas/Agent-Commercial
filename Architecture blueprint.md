@@ -105,7 +105,7 @@ process_single_     │        LLMKeyPool           │
 message(msg)───────►│  acquire(conversation_id)   │
                     │                             │
                     │  Key A: 8 conversaciones    │
-                    │  Key B: 3 ← asignar esta   │
+                    │  Key B: 3 ← asignar esta    │
                     │  Key C: 11 conversaciones   │
                     │                             │
                     │  release(conversation_id)   │
@@ -146,3 +146,92 @@ La migración hacia este nuevo bot requiere **modificar menos del 15% del núcle
 1. Escribir el nuevo *System Prompt* central (Rol: Asesor Comercial Especializado).
 2. Desarrollar las herramientas del skill `crm_integration`.
 3. Integrar un nuevo productor (ej. la API de WhatsApp Business o Twilio) heredando del [BaseProducer](file:///y:/MySource/IA/Agent-Telegram/src/core/producers/base.py#5-27) ya construido.
+
+---
+
+## 🌐 5. Infraestructura por Entorno
+
+### 5.1 Entorno de Desarrollo (Local + ngrok)
+
+Para el desarrollo y pruebas del canal Telegram Webhook, se utiliza **ngrok** como túnel HTTPS que expone el servidor local a internet sin necesidad de un servidor público.
+
+```
+[Bot Telegram @INASC_bot]
+        │
+        │  HTTPS POST (webhook)
+        ▼
+https://<id>.ngrok-free.app/webhook/telegram
+        │
+        │  túnel ngrok (LAN → internet)
+        ▼
+http://127.0.0.1:8000  (uvicorn local)
+        │
+        ▼
+FastAPI Agent + Queue + LLM (DeepSeek)
+        │
+        ▼
+MySQL local (127.0.0.1:3306, DB: comm_agent)
+```
+
+**Componentes del entorno de desarrollo:**
+
+| Componente | Versión / Detalle |
+|---|---|
+| Python runtime | CPython 3.14 (local) |
+| Servidor ASGI | `uvicorn src.main:app --reload --port 8000` |
+| Túnel HTTPS | ngrok 3.36.0 (authtoken configurado) |
+| Base de datos | MySQL local |
+| LLM | DeepSeek API (`api.deepseek.com`) |
+| Bot Telegram | Token en `.env` (`TELEGRAM_BOT_TOKEN`) |
+
+**Flujo de arranque en desarrollo:**
+```bash
+# Terminal 1: servidor Python
+python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
+
+# Terminal 2: túnel público
+ngrok http 8000
+# → copia la URL https://<id>.ngrok-free.app
+
+# Registro único del webhook con Telegram (solo cuando cambia la URL):
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<id>.ngrok-free.app/webhook/telegram"
+```
+
+---
+
+### 5.2 Entorno de Producción (VPS Hostinger)
+
+Para producción, el sistema corre en un **VPS Hostinger KVM** con IP pública fija, Nginx como proxy inverso y Docker para el aislamiento del agente.
+
+**Infraestructura contratada (pendiente de aprovisionamiento):**
+- **Proveedor:** Hostinger (cuenta existente: `u851602756`)
+- **Plan hosting actual:** Premium Web Hosting (shared) — **no apto** para correr daemons Python
+- **Plan a contratar:** VPS KVM1 (~USD 5–10/mes) con IP pública dedicada
+
+```
+[Bot Telegram]
+      │
+      │  HTTPS POST
+      ▼
+https://inasc.com.co/webhook/telegram   ← Nginx (SSL terminado, Let's Encrypt)
+      │
+      │  proxy_pass http://127.0.0.1:8000
+      ▼
+Docker container: agent-commercial (FastAPI + uvicorn)
+      │
+      ▼
+Docker container: mysql (o MySQL del hosting compartido vía TCP externo)
+```
+
+**Stack de producción:**
+
+| Capa | Tecnología | Notas |
+|---|---|---|
+| SO | Ubuntu 22.04 LTS | Imagen estándar Hostinger VPS |
+| Proxy inverso | Nginx + Let's Encrypt | SSL automático |
+| Runtime | Docker + docker-compose | Definido en `docker-compose.yml` (por implementar) |
+| Agente | `agent-commercial` container | Puerto interno 8000 |
+| BD | MySQL (mismo VPS o externo) | Credenciales en `.env` de producción |
+| Registro webhook | URL fija del VPS | Solo se registra una vez en Telegram |
+
+**Nota de migración:** la URL del webhook de Telegram debe actualizarse llamando a `setWebhook` con la nueva URL del VPS cuando se migre de desarrollo a producción. El bot de Telegram solo acepta un webhook activo a la vez.
