@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from src.core.queue_manager import queue_manager
 from src.core.connection_manager import connection_manager
+from src.core.telegram_responder import telegram_responder
 from src.core.llm import llm_engine
 from src.database.connection import async_session_factory
 from src.database import crud
@@ -56,11 +57,14 @@ async def process_single_message(message):
         logger.info(f"[{message.tenant_id}] 📤 Routing response to '{message.platform}' channel for '{message.platform_user_id}'")
 
         # Ruteo de respuesta al canal de origen.
-        # Si el mensaje vino por WebSocket (platform='web'), send_to_client() deposita
-        # response_text en la cola privada del cliente y el endpoint WS lo reenvía.
-        # Si vino por otro canal (Telegram, WhatsApp), send_to_client() hace pass silencioso
-        # — backwards compatible, sin romper ningún canal existente.
-        await connection_manager.send_to_client(message.platform_user_id, response_text)
+        # Canal web (WebSocket): deposita la respuesta en la cola privada asyncio del cliente.
+        # Canal telegram:        llama sendMessage de la API de Telegram de forma asíncrona.
+        # Otros canales futuros: añadir elif aquí (WhatsApp, Signal, etc.)
+        if message.platform == "telegram":
+            await telegram_responder.send_message(message.platform_user_id, response_text)
+        else:
+            # Fallback para WebSocket y futuros canales con cola asyncio
+            await connection_manager.send_to_client(message.platform_user_id, response_text)
         
     except Exception as e:
         logger.error(f"[{message.tenant_id}] Error in worker processing message: {e}")
@@ -103,6 +107,8 @@ async def lifespan(app: FastAPI):
         await agent_task
     except asyncio.CancelledError:
         pass
+    # Cerrar el cliente HTTP de TelegramResponder limpiamente
+    await telegram_responder.close()
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(
@@ -115,8 +121,10 @@ app = FastAPI(
 # Import and mount our routers
 from src.api.routers import simulator
 from src.api.routers import websocket
+from src.api.routers import telegram
 app.include_router(simulator.router)
 app.include_router(websocket.router)
+app.include_router(telegram.router)
 
 @app.get("/")
 def read_root():
