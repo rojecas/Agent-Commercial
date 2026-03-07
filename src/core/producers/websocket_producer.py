@@ -1,6 +1,15 @@
+import os
 from typing import Any
+from dotenv import load_dotenv
 from src.models.message import IncomingMessage
 from src.core.producers.base import BaseProducer
+
+load_dotenv()
+
+# tenant_id representa la EMPRESA (INASC S.A.S.), no el canal.
+# El canal ya queda en IncomingMessage.platform ('web', 'telegram', etc.)
+# Fix Issue #18: unificar tenant_id en todos los Producers.
+TENANT_ID = os.getenv("TENANT_ID", "inasc_001")
 
 
 class WebSocketProducer(BaseProducer):
@@ -21,6 +30,9 @@ class WebSocketProducer(BaseProducer):
         "user_name": "Juan Pérez"     # Opcional
     }
     """
+
+    def __init__(self, tenant_id: str = TENANT_ID):
+        self.tenant_id = tenant_id
 
     async def process_payload(self, raw_payload: Any) -> IncomingMessage:
         return IncomingMessage(

@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
-from src.core.producers.telegram_producer import TelegramProducer, TELEGRAM_TENANT_ID
+from src.core.producers.telegram_producer import TelegramProducer, TENANT_ID as TELEGRAM_TENANT_ID
 
 logger = logging.getLogger(__name__)
 
