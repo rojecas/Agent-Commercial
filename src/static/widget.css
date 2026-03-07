@@ -1,0 +1,341 @@
+/* ============================================================
+   INASC Chat Widget — widget.css
+   Paleta: Verde #00b33f | Azul oscuro #244253 | Fuente: Titillium Web
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700&display=swap');
+
+/* ── Reset & Variables ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --inasc-green:      #00b33f;
+  --inasc-green-dark: #019d38;
+  --inasc-blue:       #244253;
+  --inasc-blue-light: #2e5468;
+  --text-dark:        #333333;
+  --text-light:       #ffffff;
+  --bg-chat:          #f5f5f5;
+  --bubble-agent-bg:  #e8f8ee;
+  --bubble-agent-bd:  #b3e0c0;
+  --bubble-user-bg:   #244253;
+  --radius-bubble:    16px;
+  --shadow:           0 4px 24px rgba(0,0,0,0.18);
+  --shadow-btn:       0 2px 12px rgba(0,179,63,0.35);
+  --transition:       350ms ease-in-out;
+  --font:             'Titillium Web', sans-serif;
+  --widget-width:     370px;
+  --widget-height:    520px;
+}
+
+/* ── Launcher Button (burbuja flotante) ────────────────────── */
+#inasc-chat-launcher {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--inasc-green);
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+#inasc-chat-launcher:hover {
+  background: var(--inasc-green-dark);
+  transform: scale(1.08);
+  box-shadow: 0 4px 20px rgba(0,179,63,0.5);
+}
+#inasc-chat-launcher svg {
+  fill: #fff;
+  width: 28px;
+  height: 28px;
+  transition: transform var(--transition);
+}
+#inasc-chat-launcher.is-open svg.icon-chat { display: none; }
+#inasc-chat-launcher:not(.is-open) svg.icon-close { display: none; }
+
+/* Badge de notificación */
+#inasc-notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #e53935;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  display: none; /* visible via JS cuando llega msg no leído */
+}
+
+/* ── Panel principal del chat ──────────────────────────────── */
+#inasc-chat-panel {
+  position: fixed;
+  bottom: 100px;
+  right: 28px;
+  z-index: 9998;
+  width: var(--widget-width);
+  height: var(--widget-height);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font);
+
+  /* Animación slide-up */
+  transform: translateY(20px) scale(0.97);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--transition), opacity var(--transition);
+}
+#inasc-chat-panel.is-visible {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+#inasc-chat-header {
+  background: linear-gradient(135deg, var(--inasc-blue) 0%, var(--inasc-blue-light) 100%);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.inasc-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--inasc-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.inasc-avatar svg { fill: #fff; width: 22px; height: 22px; }
+.inasc-header-info { flex: 1; }
+.inasc-header-info h3 {
+  color: var(--text-light);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.inasc-header-info p {
+  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.inasc-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--inasc-green);
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(0,179,63,0.3);
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0,179,63,0.3); }
+  50%       { box-shadow: 0 0 0 5px rgba(0,179,63,0.1); }
+}
+
+/* ── Área de mensajes ──────────────────────────────────────── */
+#inasc-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-chat);
+  scroll-behavior: smooth;
+}
+#inasc-chat-messages::-webkit-scrollbar { width: 4px; }
+#inasc-chat-messages::-webkit-scrollbar-track { background: transparent; }
+#inasc-chat-messages::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+/* ── Burbujas ──────────────────────────────────────────────── */
+.inasc-bubble-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  animation: bubble-in 0.22s ease-out;
+}
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.inasc-bubble-row.user { flex-direction: row-reverse; }
+
+.inasc-bubble {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: var(--radius-bubble);
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.5;
+  word-break: break-word;
+}
+/* Burbuja del agente */
+.inasc-bubble-row.agent .inasc-bubble {
+  background: var(--bubble-agent-bg);
+  border: 1px solid var(--bubble-agent-bd);
+  color: var(--text-dark);
+  border-bottom-left-radius: 4px;
+}
+/* Burbuja del usuario */
+.inasc-bubble-row.user .inasc-bubble {
+  background: var(--bubble-user-bg);
+  color: var(--text-light);
+  border-bottom-right-radius: 4px;
+}
+
+/* Avatar mini del agente en burbuja */
+.inasc-mini-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--inasc-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+.inasc-mini-avatar svg { fill: #fff; width: 14px; height: 14px; }
+.inasc-bubble-row.user .inasc-mini-avatar { display: none; }
+
+/* ── Typing indicator ──────────────────────────────────────── */
+#inasc-typing {
+  display: none; /* visible via JS */
+  align-items: flex-end;
+  gap: 8px;
+}
+#inasc-typing.visible { display: flex; }
+.inasc-typing-dots {
+  background: var(--bubble-agent-bg);
+  border: 1px solid var(--bubble-agent-bd);
+  border-radius: var(--radius-bubble);
+  border-bottom-left-radius: 4px;
+  padding: 10px 16px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.inasc-typing-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--inasc-green);
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+.inasc-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.inasc-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0);   opacity: 0.5; }
+  40%            { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Input area ────────────────────────────────────────────── */
+#inasc-chat-input-area {
+  padding: 12px 14px;
+  background: #fff;
+  border-top: 1px solid #e8e8e8;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+#inasc-chat-input {
+  flex: 1;
+  border: 1.5px solid #ddd;
+  border-radius: 22px;
+  padding: 9px 16px;
+  font-family: var(--font);
+  font-size: 13.5px;
+  color: var(--text-dark);
+  resize: none;
+  outline: none;
+  max-height: 100px;
+  overflow-y: auto;
+  transition: border-color var(--transition);
+  background: #fafafa;
+  line-height: 1.4;
+}
+#inasc-chat-input:focus { border-color: var(--inasc-green); background: #fff; }
+#inasc-chat-input::placeholder { color: #aaa; font-weight: 300; }
+
+#inasc-send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--inasc-green);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition), transform 0.15s;
+  box-shadow: 0 2px 8px rgba(0,179,63,0.3);
+}
+#inasc-send-btn:hover { background: var(--inasc-green-dark); transform: scale(1.08); }
+#inasc-send-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+#inasc-send-btn svg { fill: #fff; width: 18px; height: 18px; }
+
+/* ── Footer watermark ──────────────────────────────────────── */
+#inasc-chat-footer {
+  text-align: center;
+  padding: 6px;
+  font-family: var(--font);
+  font-size: 10px;
+  color: #bbb;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+#inasc-chat-footer a { color: var(--inasc-green); text-decoration: none; }
+
+/* ── Connection status banner ──────────────────────────────── */
+#inasc-conn-status {
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: center;
+  padding: 5px;
+  display: none;
+}
+#inasc-conn-status.connecting { display: block; background: #fff3cd; color: #856404; }
+#inasc-conn-status.error      { display: block; background: #f8d7da; color: #721c24; }
+#inasc-conn-status.reconnecting { display: block; background: #d1ecf1; color: #0c5460; }
+
+/* ── Responsive (móviles) ──────────────────────────────────── */
+@media (max-width: 420px) {
+  #inasc-chat-panel {
+    width: 100vw;
+    height: 100dvh;
+    bottom: 0;
+    right: 0;
+    border-radius: 0;
+  }
+  #inasc-chat-launcher { bottom: 16px; right: 16px; }
+}

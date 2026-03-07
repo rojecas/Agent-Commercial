@@ -1,7 +1,9 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
+from starlette.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from src.core.queue_manager import queue_manager
@@ -125,6 +127,11 @@ from src.api.routers import telegram
 app.include_router(simulator.router)
 app.include_router(websocket.router)
 app.include_router(telegram.router)
+
+# Servir archivos estáticos del Widget JS (Issue #15)
+# Ruta relativa al propio main.py → src/static/ → expuesta en /static
+_STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 @app.get("/")
 def read_root():
