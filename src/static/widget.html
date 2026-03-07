@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INASC — Asistente Virtual</title>
+  <meta name="description" content="Chat con el Asistente Virtual de INASC — Instruments & Applied Sciences. Soporte técnico y asesoría comercial en tiempo real.">
+
+  <!-- Fuentes igual que el sitio de INASC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/widget.css">
+
+  <!-- Demo page styles: solo para mostrar el widget en contexto -->
+  <style>
+    body {
+      font-family: 'Titillium Web', sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .demo-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 40px 36px;
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      text-align: center;
+    }
+    .demo-card .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .demo-card .logo-icon {
+      width: 44px; height: 44px;
+      background: #00b33f;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .demo-card .logo-icon svg { fill: #fff; width: 24px; height: 24px; }
+    .demo-card h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #244253;
+      margin: 0;
+    }
+    .demo-card p {
+      color: #555;
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    .demo-card .info-box {
+      background: #e8f8ee;
+      border: 1px solid #b3e0c0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 13px;
+      color: #2d6a4f;
+      text-align: left;
+    }
+    .demo-card .info-box strong { color: #00b33f; }
+    .arrow-hint {
+      position: fixed;
+      bottom: 96px;
+      right: 36px;
+      font-family: 'Titillium Web', sans-serif;
+      font-size: 13px;
+      color: #244253;
+      font-weight: 600;
+      background: rgba(255,255,255,0.95);
+      padding: 8px 14px;
+      border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+      pointer-events: none;
+      animation: hint-bounce 2s infinite ease-in-out;
+      white-space: nowrap;
+    }
+    @keyframes hint-bounce {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-5px); }
+    }
+    .arrow-hint::after {
+      content: ' 👇';
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Demo Card (contenido de prueba de la página host) -->
+  <div class="demo-card">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M19.5 3h-15A1.5 1.5 0 0 0 3 4.5v15A1.5 1.5 0 0 0 4.5 21h15a1.5 1.5 0 0 0 1.5-1.5v-15A1.5 1.5 0 0 0 19.5 3zm-9 13.5H9v-7h1.5v7zm3 0h-1.5V9H13.5v7.5zm3 0H15v-5h1.5v5z"/></svg>
+      </div>
+      <h1>INASC — Widget de Chat</h1>
+    </div>
+
+    <p>
+      Esta página demuestra el <strong>Asistente Virtual de INASC</strong> funcionando en tiempo real
+      a través de WebSocket. El widget aparece en la esquina inferior derecha de cualquier página donde
+      se integre.
+    </p>
+
+    <div class="info-box">
+      <strong>Integración en www.inasc.com.co</strong><br>
+      Para integrar el widget en cualquier página, añade estas dos líneas antes de cerrar el tag
+      <code>&lt;/body&gt;</code>:
+      <br><br>
+      <code>
+        &lt;link rel="stylesheet" href="/static/widget.css"&gt;<br>
+        &lt;!-- [pegar el bloque HTML del widget] --&gt;<br>
+        &lt;script src="/static/widget.js"&gt;&lt;/script&gt;
+      </code>
+    </div>
+  </div>
+
+  <!-- Indicador visual para el demo -->
+  <div class="arrow-hint">Chatea con el asistente</div>
+
+  <!-- ══════════════════════════════════════════════════════
+       BLOQUE DEL WIDGET — Copiar este bloque en cada página
+       ══════════════════════════════════════════════════════ -->
+
+  <!-- Botón flotante (launcher) -->
+  <button
+    id="inasc-chat-launcher"
+    aria-label="Abrir chat con el asistente INASC"
+    title="Habla con nuestro Asistente Virtual"
+  >
+    <!-- Los SVGs los inyecta widget.js -->
+    <div id="inasc-notif-badge" aria-hidden="true"></div>
+  </button>
+
+  <!-- Panel principal del chat -->
+  <div
+    id="inasc-chat-panel"
+    role="dialog"
+    aria-label="Asistente Virtual INASC"
+    aria-modal="true"
+  >
+    <!-- Header -->
+    <div id="inasc-chat-header">
+      <div class="inasc-avatar">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h3a3 3 0 0 1 3 3v1h1a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-1H3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h1v-1a3 3 0 0 1 3-3h3V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2zm-2 9a1.5 1.5 0 0 0 0 3 1.5 1.5 0 0 0 0-3zm4 0a1.5 1.5 0 0 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4h4l-1 2h-2l-1-2z"/>
+        </svg>
+      </div>
+      <div class="inasc-header-info">
+        <h3>Asistente INASC</h3>
+        <p>
+          <span class="inasc-status-dot" aria-hidden="true"></span>
+          En línea · Asesor Técnico Comercial
+        </p>
+      </div>
+    </div>
+
+    <!-- Banner de estado de conexión -->
+    <div id="inasc-conn-status" role="status" aria-live="polite"></div>
+
+    <!-- Historial de mensajes -->
+    <div id="inasc-chat-messages" role="log" aria-live="polite" aria-label="Mensajes del chat">
+
+      <!-- Indicador de "escribiendo..." -->
+      <div id="inasc-typing" class="inasc-bubble-row agent" aria-label="El asistente está escribiendo">
+        <div class="inasc-mini-avatar">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h3a3 3 0 0 1 3 3v1h1a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-1H3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h1v-1a3 3 0 0 1 3-3h3V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2zm-2 9a1.5 1.5 0 0 0 0 3 1.5 1.5 0 0 0 0-3zm4 0a1.5 1.5 0 0 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4h4l-1 2h-2l-1-2z"/>
+          </svg>
+        </div>
+        <div class="inasc-typing-dots" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Input area -->
+    <div id="inasc-chat-input-area">
+      <textarea
+        id="inasc-chat-input"
+        placeholder="Escribe tu mensaje... (Enter para enviar)"
+        rows="1"
+        aria-label="Mensaje al asistente"
+        autocomplete="off"
+        spellcheck="true"
+        disabled
+      ></textarea>
+      <button
+        id="inasc-send-btn"
+        aria-label="Enviar mensaje"
+        disabled
+      >
+        <!-- SVG inyectado por widget.js -->
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <div id="inasc-chat-footer">
+      Asistente de <a href="https://www.inasc.com.co" target="_blank" rel="noopener noreferrer">INASC S.A.S.</a>
+      · Powered by IA
+    </div>
+
+  </div>
+  <!-- ══════════ FIN DEL BLOQUE DEL WIDGET ══════════ -->
+
+  <script src="/static/widget.js"></script>
+</body>
+</html>
