@@ -10,9 +10,10 @@ from src.models.message import IncomingMessage
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Tenant por defecto para el canal Telegram.
-# Configurable en .env como TELEGRAM_CHANNEL_TENANT_ID.
-TELEGRAM_TENANT_ID = os.getenv("TELEGRAM_CHANNEL_TENANT_ID", "inasc_telegram")
+# tenant_id representa la EMPRESA (INASC S.A.S.), no el canal.
+# El canal queda en IncomingMessage.platform ('telegram', 'web', etc.)
+# Fix Issue #18: unificar tenant_id en todos los Producers.
+TENANT_ID = os.getenv("TENANT_ID", "inasc_001")
 
 
 class TelegramProducer(BaseProducer):
@@ -23,14 +24,15 @@ class TelegramProducer(BaseProducer):
     hacia el formato estándar IncomingMessage para que el Agent Loop lo procese.
 
     Diseño:
-    - El tenant_id se inyecta desde el entorno del servidor (nunca del payload).
-    - El platform_user_id es el chat_id de Telegram (str) para garantizar
-      que TelegramResponder pueda construir la respuesta de vuelta.
+    - El tenant_id se lee de TENANT_ID en .env (representa la empresa, no el canal).
+    - El canal queda en platform='telegram' del IncomingMessage.
+    - El platform_user_id es el chat_id de Telegram (str) para que
+      TelegramResponder pueda construir la respuesta de vuelta.
     - Mensajes sin campo 'text' (fotos, stickers, etc.) levantan ValueError
       para que el endpoint los ignore limpiamente.
     """
 
-    def __init__(self, tenant_id: str = TELEGRAM_TENANT_ID):
+    def __init__(self, tenant_id: str = TENANT_ID):
         self.tenant_id = tenant_id
 
     async def process_payload(self, raw_payload: Any) -> IncomingMessage:
