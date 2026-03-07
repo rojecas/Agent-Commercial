@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from src.core.queue_manager import queue_manager
 from src.core.connection_manager import connection_manager
 from src.core.telegram_responder import telegram_responder
+from src.core.whatsapp_responder import whatsapp_responder
 from src.core.llm import llm_engine
 from src.database.connection import async_session_factory
 from src.database import crud
@@ -64,8 +65,10 @@ async def process_single_message(message):
         # Otros canales futuros: añadir elif aquí (WhatsApp, Signal, etc.)
         if message.platform == "telegram":
             await telegram_responder.send_message(message.platform_user_id, response_text)
+        elif message.platform == "whatsapp":
+            await whatsapp_responder.send_message(message.platform_user_id, response_text)
         else:
-            # Fallback para WebSocket y futuros canales con cola asyncio
+            # Canal web (WebSocket) y futuros canales con cola asyncio
             await connection_manager.send_to_client(message.platform_user_id, response_text)
         
     except Exception as e:
@@ -109,8 +112,9 @@ async def lifespan(app: FastAPI):
         await agent_task
     except asyncio.CancelledError:
         pass
-    # Cerrar el cliente HTTP de TelegramResponder limpiamente
+    # Cerrar los clientes HTTP limpiamente al apagar el servidor
     await telegram_responder.close()
+    await whatsapp_responder.close()
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(
@@ -124,9 +128,11 @@ app = FastAPI(
 from src.api.routers import simulator
 from src.api.routers import websocket
 from src.api.routers import telegram
+from src.api.routers import whatsapp
 app.include_router(simulator.router)
 app.include_router(websocket.router)
 app.include_router(telegram.router)
+app.include_router(whatsapp.router)
 
 # Servir archivos estáticos del Widget JS (Issue #15)
 # Ruta relativa al propio main.py → src/static/ → expuesta en /static
