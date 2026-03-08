@@ -10,8 +10,11 @@ La solución actual está diseñada bajo una arquitectura modular y escalable qu
 
 ### 1.1 Patrón Productor-Consumidor (Ingesta Multicanal)
 - **Principio:** Desacopla la recepción de mensajes del procesamiento de la IA.
-- **Implementación:** Se utiliza una `PriorityQueue` central. Clases especializadas que heredan de [BaseProducer](file:///y:/MySource/IA/Agent-Telegram/src/core/producers/base.py#5-27) (ej., [TelegramProducer](file:///y:/MySource/IA/Agent-Telegram/src/core/producers/telegram.py#10-58), [KeyboardProducer](file:///y:/MySource/IA/Agent-Telegram/src/core/producers/keyboard.py#6-49)) escuchan eventos y encolan mensajes.
-- **Ventaja para el nuevo Bot:** Permite añadir un `WhatsAppProducer` o `WebWidgetProducer` de forma trivial. El bot procesará leads desde cualquier canal usando la misma lógica central.
+- **Implementación:** Se utiliza una `asyncio.Queue` central. Clases especializadas que heredan de `BaseProducer` (
+  `WebSocketProducer`, `TelegramProducer`, `WhatsAppProducer`) normalizan el payload de cada canal hacia el modelo
+  estándar `IncomingMessage` antes de encolarlo.
+- **Estado:** Los tres canales están implementados y testeados (14 + 8 + 8 tests). Añadir un canal nuevo
+  (Signal, Email, etc.) requiere únicamente un nuevo `XProducer`, un `XResponder` y un `elif` en `main.py`.
 
 ### 1.2 Registro Dinámico de Herramientas (Skill Orchestration)
 - **Principio:** Carga Perezosa (Lazy Loading) y Principio de Abierto/Cerrado (OCP).
@@ -157,17 +160,19 @@ Para el desarrollo y pruebas del canal Telegram Webhook, se utiliza **ngrok** co
 
 ```
 [Bot Telegram @INASC_bot]
+[Meta WhatsApp Cloud API]
+[Widget Web (JS/WS)]
         │
-        │  HTTPS POST (webhook)
+        │  HTTPS POST/WS (webhook o websocket)
         ▼
-https://<id>.ngrok-free.app/webhook/telegram
+https://<id>.ngrok-free.app/{webhook/telegram | webhook/whatsapp | ws/chat/*}
         │
         │  túnel ngrok (LAN → internet)
         ▼
 http://127.0.0.1:8000  (uvicorn local)
         │
         ▼
-FastAPI Agent + Queue + LLM (DeepSeek)
+FastAPI Agent + asyncio.Queue + LLM (DeepSeek)
         │
         ▼
 MySQL local (127.0.0.1:3306, DB: comm_agent)
@@ -183,6 +188,8 @@ MySQL local (127.0.0.1:3306, DB: comm_agent)
 | Base de datos | MySQL local |
 | LLM | DeepSeek API (`api.deepseek.com`) |
 | Bot Telegram | Token en `.env` (`TELEGRAM_BOT_TOKEN`) |
+| WhatsApp | Meta Cloud API — credenciales en `.env` (`WHATSAPP_API_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`) |
+| Widget Web | Servido en `/static/widget.html` vía `StaticFiles` |
 
 **Flujo de arranque en desarrollo:**
 ```bash
@@ -193,8 +200,12 @@ python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ngrok http 8000
 # → copia la URL https://<id>.ngrok-free.app
 
-# Registro único del webhook con Telegram (solo cuando cambia la URL):
+# Registro del webhook con Telegram (solo cuando cambia la URL):
 curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<id>.ngrok-free.app/webhook/telegram"
+
+# Registro del webhook con Meta (en developers.facebook.com > App > WhatsApp > Configuration):
+# URL:          https://<id>.ngrok-free.app/webhook/whatsapp
+# Verify Token: valor de WHATSAPP_VERIFY_TOKEN en .env
 ```
 
 ---
