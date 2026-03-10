@@ -44,6 +44,31 @@ WhatsApp──► WhatsAppProducer  ──► Queue   ────►   + LLM   
 
 **Añadir un canal nuevo** = crear un `XProducer` y un `XResponder` + 1 `elif` en `main.py`.
 
+### Handoff a Asesor Humano (en desarrollo — Issues #23/#24/#25)
+
+Cada canal incluirá un mecanismo de transferencia cuando el bot detecta que el caso requiere atención humana. La lógica es canal-agnóstica mediante el patrón **Strategy**:
+
+```
+process_single_message()
+    │
+    ├── [NUEVO] conversation.status != 'active' → bot silenciado, return
+    │
+    ├── LLM genera respuesta
+    │
+    └── [NUEVO] HandoffService.check_and_execute()
+            ├── Trigger A: usuario pide asesor explícitamente
+            ├── Trigger B: LLM decide que el caso lo requiere
+            │
+            ├── HAY ASESOR → XHandoffNotifier.notify_available()
+            └── SIN ASESOR → XHandoffNotifier.notify_unavailable() + resumen al equipo
+```
+
+| Canal | Método de notificación al asesor | Silenciado del bot |
+|---|---|---|
+| WhatsApp | Meta Coexistence API | `conversation.status` |
+| Telegram | `forwardMessage` + `sendMessage` al asesor | `conversation.status` |
+| Widget Web | Payload `{type: "handoff"}` al cliente WS | `conversation.status` |
+
 ---
 
 ## 🗄️ Esquema de Base de Datos (Multi-Tenant)
@@ -69,13 +94,21 @@ erDiagram
     }
     conversations {
         BigInteger id PK
-        String status "active, closed, handed_off"
+        String status "active, closed, handed_off, pending_callback"
         String tenant_id
     }
     messages {
         BigInteger id PK
         String role "user, assistant"
         Text content
+        String tenant_id
+    }
+    advisors {
+        BigInteger id PK
+        String name
+        String telegram_user_id
+        String whatsapp_number
+        Boolean is_available
         String tenant_id
     }
 ```
@@ -180,163 +213,15 @@ La suite de tests cubre los tres canales sin necesidad de credenciales reales.
 
 ---
 
-## ⚙️ Git Flow
+## 🛣️ Roadmap
 
-Ningún cambio se aplica directamente a `main`.
-
-```
-Issue → branch feature/issue-N-descripcion → PR → merge → cierra issue automáticamente
-```
-
-
-
-
----
-
-## 🏗️ Stack Tecnológico y Arquitectura
-
-El sistema está construido bajo un patrón **Modular (Layered MVC)** que separa claramente el dominio del Chat, la lógica del Agente LLM, y el almacenamiento en Base de Datos.
-
-*   **Motor (Framework):** `FastAPI` + `uvicorn` (Para máxima velocidad asíncrona y webhooks en tiempo real).
-*   **Inteligencia Artificial:** OpenAI Proxy SDK consumiendo la API de **DeepSeek Chat**.
-*   **Base de Datos Relacional:** `MySQL` operado mediante `SQLAlchemy` (ORM) en modo asíncrono puro (`aiomysql`). Las migraciones son manejadas por **Alembic**.
-*   **Memoria de Larga Duración (Vector DB):** `ChromaDB` (Local) impulsado por `sentence-transformers`. Aquí se indexa el catálogo de productos para búsqueda semántica (RAG).
-*   **Concurrencia:** Python `asyncio` nativo (sin Celery o Celery workers) respaldado por WebSockets.
-*   **Limpieza de Datos:** `BeautifulSoup4` para normalizar las ricas descripciones HTML heredadas del catálogo corporativo original.
-
----
-
-## 🗄️ Esquema de Base de Datos (Multi-Tenant)
-
-Cada tabla crítica hereda tres Mixins:
-1. **`TenantMixin`** — aísla datos por `tenant_id`
-2. **`SoftDeleteMixin`** — borrado lógico (`is_deleted`, `deleted_at`)
-3. **`AuditableMixin`** — auditoría automática (`created_at`, `updated_at`)
-
-```mermaid
-erDiagram
-    companies ||--o{ company_divisions : "has"
-    company_divisions ||--o{ users : "employs"
-    users ||--o{ conversations : "initiates"
-    conversations ||--o{ messages : "contains"
-    users ||--o{ leads_opportunities : "creates"
-
-    users {
-        BigInteger id PK
-        String platform "websocket, telegram, whatsapp"
-        String platform_user_id
-        String tenant_id
-    }
-    conversations {
-        BigInteger id PK
-        String status "active, closed, handed_off"
-        String tenant_id
-    }
-    messages {
-        BigInteger id PK
-        String role "user, assistant"
-        Text content
-        String tenant_id
-    }
-```
-
----
-
-## 🚀 Arranque Local
-
-### 1. Configurar variables de entorno
-```bash
-cp .env.example .env
-# Edita .env con tus credenciales
-```
-
-Variables mínimas para desarrollo:
-```env
-DEEPSEEK_API_KEY=...
-DB_URL=mysql+aiomysql://user:pass@127.0.0.1/comm_agent
-TENANT_ID=inasc_001
-```
-
-### 2. Instalar dependencias y levantar el servidor
-```bash
-python -m venv venv
-source venv/Scripts/activate   # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn src.main:app --host 127.0.0.1 --port 8000
-```
-
-### 3. Abrir el Widget de Chat
-```
-http://127.0.0.1:8000/static/widget.html
-```
-
----
-
-## 🔧 Configuración de Canales
-
-### Telegram
-```env
-TELEGRAM_BOT_TOKEN=...
-```
-Registrar el webhook (una sola vez o cuando cambie la URL):
-```bash
-curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<ngrok>.ngrok-free.app/webhook/telegram"
-```
-
-### WhatsApp (Meta Cloud API)
-```env
-WHATSAPP_API_TOKEN=...          # Token de la App en developers.facebook.com
-WHATSAPP_PHONE_NUMBER_ID=...    # ID del número (no el número en sí)
-WHATSAPP_VERIFY_TOKEN=inasc_whatsapp_verify_token  # Definido por ti
-```
-Configuración del webhook en Meta Developer Dashboard:
-- URL: `https://<ngrok>.ngrok-free.app/webhook/whatsapp`
-- Verify Token: valor de `WHATSAPP_VERIFY_TOKEN`
-
----
-
-## 🧪 Tests
-
-La suite de tests cubre los tres canales sin necesidad de credenciales reales.
-
-```bash
-# Todos los tests
-./venv/Scripts/python -m pytest tests/ -v
-
-# Por canal
-./venv/Scripts/python -m pytest tests/unit/test_whatsapp_producer.py tests/functional/test_whatsapp_webhook.py -v
-./venv/Scripts/python -m pytest tests/unit/test_websocket_producer.py tests/functional/test_websocket_endpoint.py -v
-./venv/Scripts/python -m pytest tests/unit/test_telegram_producer.py tests/functional/test_telegram_webhook.py -v
-```
-
-**Estado actual:**
-
-| Suite | Tests | Estado |
+| Issue | Feature | Estado |
 |---|---|---|
-| Widget Web (WebSocket) | 8 | ✅ 8/8 |
-| Telegram | 8 | ✅ 8/8 |
-| WhatsApp | 14 | ✅ 14/14 |
-| Integración DB (multi-tenant) | 4+ | ✅ Todos pasan |
-
----
-
-## 🌐 Infraestructura
-
-### Desarrollo (local + ngrok)
-```
-[Canal externo] → https://<id>.ngrok-free.app/webhook/... → uvicorn local (127.0.0.1:8000) → MySQL local
-```
-
-### Producción (VPS Hostinger — pendiente de aprovisionamiento)
-```
-[Canal externo] → https://inasc.com.co/webhook/... → Nginx (SSL) → Docker: agent-commercial → MySQL
-```
-
-| Capa | Tecnología |
-|---|---|
-| Proxy inverso | Nginx + Let's Encrypt |
-| Runtime | Docker + docker-compose |
-| VPS | Hostinger KVM (Ubuntu 22.04) |
+| #23 | `HandoffService` base + tabla `advisors` | 🟡 Próximo |
+| #24 | Handoff Telegram (`forwardMessage` + silenciado) | ⏳ Pendiente #23 |
+| #25 | Handoff Widget Web + UI (`type:"handoff"`) | ⏳ Pendiente #24 |
+| — | VPS Hostinger + Docker en producción | ⏳ Pendiente aprovisionamiento |
+| — | `LLMKeyPool`: pool de API Keys por tenant | ⏳ Planificado |
 
 ---
 
