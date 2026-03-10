@@ -92,11 +92,13 @@ class HandoffService:
         """
         # Importaciones lazy para evitar dependencias circulares
         # y mantener cada canal como módulo opcional
-        registry: dict[str, BaseHandoffNotifier] = {}
+        from src.core.handoff.telegram_handoff_notifier import TelegramHandoffNotifier
 
-        # TODO #24: registry["telegram"] = TelegramHandoffNotifier()
-        # TODO #25: registry["websocket"] = WebSocketHandoffNotifier()
-        # TODO #23: registry["whatsapp"] = WhatsAppHandoffNotifier()
+        registry: dict[str, BaseHandoffNotifier] = {
+            "telegram": TelegramHandoffNotifier(),
+            # TODO #25: "websocket": WebSocketHandoffNotifier(),
+            # TODO #23-WA: "whatsapp": WhatsAppHandoffNotifier(),
+        }
 
         notifier = registry.get(platform)
         if notifier is None:
