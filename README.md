@@ -189,7 +189,10 @@ La suite de tests cubre los tres canales sin necesidad de credenciales reales.
 | Widget Web (WebSocket) | 8 | ✅ 8/8 |
 | Telegram | 8 | ✅ 8/8 |
 | WhatsApp | 14 | ✅ 14/14 |
+| HandoffService (unit) | 11 | ✅ 11/11 |
 | Integración DB (multi-tenant) | 4+ | ✅ Todos pasan |
+| **Total** | **45+** | ✅ **49/49** |
+
 
 ---
 
@@ -217,8 +220,8 @@ La suite de tests cubre los tres canales sin necesidad de credenciales reales.
 
 | Issue | Feature | Estado |
 |---|---|---|
-| #23 | `HandoffService` base + tabla `advisors` | 🟡 Próximo |
-| #24 | Handoff Telegram (`forwardMessage` + silenciado) | ⏳ Pendiente #23 |
+| #23 | `HandoffService` base + tabla `advisors` | ✅ Completado |
+| #24 | Handoff Telegram (`forwardMessage` + silenciado) | 🟡 Próximo |
 | #25 | Handoff Widget Web + UI (`type:"handoff"`) | ⏳ Pendiente #24 |
 | — | VPS Hostinger + Docker en producción | ⏳ Pendiente aprovisionamiento |
 | — | `LLMKeyPool`: pool de API Keys por tenant | ⏳ Planificado |
