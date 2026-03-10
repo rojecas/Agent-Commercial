@@ -44,30 +44,30 @@ WhatsApp──► WhatsAppProducer  ──► Queue   ────►   + LLM   
 
 **Añadir un canal nuevo** = crear un `XProducer` y un `XResponder` + 1 `elif` en `main.py`.
 
-### Handoff a Asesor Humano (en desarrollo — Issues #23/#24/#25)
+### Handoff a Asesor Humano — Issues #23 ✅ / #24 🟡 / #25 ⏳
 
 Cada canal incluirá un mecanismo de transferencia cuando el bot detecta que el caso requiere atención humana. La lógica es canal-agnóstica mediante el patrón **Strategy**:
 
 ```
 process_single_message()
     │
-    ├── [NUEVO] conversation.status != 'active' → bot silenciado, return
+    ├── conversation.status != 'active' → bot silenciado, return  ✔ implementado
     │
     ├── LLM genera respuesta
     │
-    └── [NUEVO] HandoffService.check_and_execute()
+    └── HandoffService.execute()          ✔ implementado
             ├── Trigger A: usuario pide asesor explícitamente
-            ├── Trigger B: LLM decide que el caso lo requiere
+            ├── Trigger B: LLM emite [HANDOFF_REQUESTED]
             │
             ├── HAY ASESOR → XHandoffNotifier.notify_available()
-            └── SIN ASESOR → XHandoffNotifier.notify_unavailable() + resumen al equipo
+            └── SIN ASESOR → XHandoffNotifier.notify_unavailable() + resumen
 ```
 
-| Canal | Método de notificación al asesor | Silenciado del bot |
+| Canal | Notificación al asesor | Estado |
 |---|---|---|
-| WhatsApp | Meta Coexistence API | `conversation.status` |
-| Telegram | `forwardMessage` + `sendMessage` al asesor | `conversation.status` |
-| Widget Web | Payload `{type: "handoff"}` al cliente WS | `conversation.status` |
+| WhatsApp | Meta Coexistence API | ⏳ Issue #23 — pendiente notifier |
+| Telegram | `forwardMessage` + `sendMessage` al asesor | 🟡 Issue #24 |
+| Widget Web | Payload `{type: "handoff"}` al cliente WS | ⏳ Issue #25 |
 
 ---
 
@@ -130,11 +130,12 @@ DB_URL=mysql+aiomysql://user:pass@127.0.0.1/comm_agent
 TENANT_ID=inasc_001
 ```
 
-### 2. Instalar dependencias y levantar el servidor
+### 2. Instalar dependencias, migrar BD y levantar el servidor
 ```bash
 python -m venv venv
-source venv/Scripts/activate   # Windows: venv\Scripts\activate
+venv\Scripts\activate              # Windows
 pip install -r requirements.txt
+./venv/Scripts/python -m alembic upgrade head   # aplica migraciones
 uvicorn src.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -170,8 +171,6 @@ Configuración del webhook en Meta Developer Dashboard:
 
 ## 🧪 Tests
 
-La suite de tests cubre los tres canales sin necesidad de credenciales reales.
-
 ```bash
 # Todos los tests
 ./venv/Scripts/python -m pytest tests/ -v
@@ -180,6 +179,7 @@ La suite de tests cubre los tres canales sin necesidad de credenciales reales.
 ./venv/Scripts/python -m pytest tests/unit/test_whatsapp_producer.py tests/functional/test_whatsapp_webhook.py -v
 ./venv/Scripts/python -m pytest tests/unit/test_websocket_producer.py tests/functional/test_websocket_endpoint.py -v
 ./venv/Scripts/python -m pytest tests/unit/test_telegram_producer.py tests/functional/test_telegram_webhook.py -v
+./venv/Scripts/python -m pytest tests/unit/test_handoff_service.py tests/unit/test_handoff_crud.py -v
 ```
 
 **Estado actual:**
@@ -189,10 +189,9 @@ La suite de tests cubre los tres canales sin necesidad de credenciales reales.
 | Widget Web (WebSocket) | 8 | ✅ 8/8 |
 | Telegram | 8 | ✅ 8/8 |
 | WhatsApp | 14 | ✅ 14/14 |
-| HandoffService (unit) | 11 | ✅ 11/11 |
-| Integración DB (multi-tenant) | 4+ | ✅ Todos pasan |
-| **Total** | **45+** | ✅ **49/49** |
-
+| HandoffService | 11 | ✅ 11/11 |
+| Integración DB (multi-tenant) | 8 | ✅ 8/8 |
+| **Total** | **49** | ✅ **49/49** |
 
 ---
 
