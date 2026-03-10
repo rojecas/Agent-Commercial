@@ -11,6 +11,7 @@ from src.core.connection_manager import connection_manager
 from src.core.telegram_responder import telegram_responder
 from src.core.whatsapp_responder import whatsapp_responder
 from src.core.llm import llm_engine
+from src.core.handoff import handoff_service
 from src.database.connection import async_session_factory
 from src.database import crud
 
@@ -28,30 +29,47 @@ async def process_single_message(message):
     try:
         # Abrimos Sesión de BD por Transacción
         async with async_session_factory() as session:
-            # 2. Recuperar el contexto de la BD cruzando Tenant y Usuario
+            # 1. Recuperar el contexto de la BD cruzando Tenant y Usuario
             user = await crud.get_or_create_user(session, message)
             conversation = await crud.get_or_create_active_conversation(session, user.id, message.tenant_id)
-            
-            # Guardamos el mensaje entrante del prospecto
+
+            # [HANDOFF] Verificar si la conversación ya fue transferida o está pendiente.
+            # Si es así, el bot NO responde — el asesor humano tiene el control.
+            if conversation.status in ("handed_off", "pending_callback"):
+                logger.info(
+                    f"[{message.tenant_id}] 🔇 Conv {conversation.id} silenciada "
+                    f"(status='{conversation.status}'). Bot no responde."
+                )
+                return
+
+            # 2. Guardamos el mensaje entrante del prospecto
             await crud.save_message(session, conversation.id, message.tenant_id, role="user", content=message.content)
-            
-            # Recuperamos el historial de memoria dinámico (Últimos 10 mensajes)
+
+            # 3. Recuperamos el historial de memoria dinámico (Últimos 10 mensajes)
             context = await crud.get_conversation_history(session, conversation.id, message.tenant_id, limit=10)
-            
-            # 3. Call LLM (DeepSeek)
+
+            # 4. Call LLM (DeepSeek)
             logger.info(f"[{message.tenant_id}] 🤔 Thinking about message from {message.platform_user_id}: '{message.content}'...")
-            
-            # Llamada Asíncrona al Motor LLM
             response_text = await llm_engine.generate_response(context, tenant_id=message.tenant_id)
-            
-            # 4. Guardar la respuesta generada por el agente en la base de datos
+
+            # 5. [HANDOFF] Detectar trigger de handoff en la respuesta del LLM o en el mensaje del usuario.
+            # Si se activa, HandoffService cambia el status en BD y retorna el mensaje al cliente.
+            if handoff_service.detect_trigger(message.content, response_text):
+                handoff_msg = await handoff_service.execute(
+                    session, conversation, message, context_messages=context
+                )
+                if handoff_msg:
+                    # Limpiar la señal interna [HANDOFF_REQUESTED] antes de guardar/enviar
+                    response_text = handoff_msg
+
+            # 6. Guardar la respuesta generada por el agente en la base de datos
             await crud.save_message(session, conversation.id, message.tenant_id, role="assistant", content=response_text)
-            
-            # 5. ¡Commit! Guardamos todo permanentemente en MySQL si ocurrió sin errores
+
+            # 7. ¡Commit! Guardamos todo permanentemente en MySQL si ocurrió sin errores
             await session.commit()
-            
+
             logger.info(f"[{message.tenant_id}] ✅ Finished and saved to DB. LLM Response: {response_text[:50]}...")
-            
+
         from src.models.message import AgentResponse
         agent_response = AgentResponse(
             recipient_id=message.platform_user_id,

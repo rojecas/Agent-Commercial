@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, BigInteger, ForeignKey
+from sqlalchemy import Column, String, Text, BigInteger, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from src.database.base import Base, TenantMixin, SoftDeleteMixin, AuditableMixin
 
@@ -132,3 +132,31 @@ class OpportunityProductRecommendation(Base, TenantMixin, AuditableMixin):
     
     # Relationships
     opportunity = relationship("LeadsOpportunity", back_populates="recommendations")
+
+
+class Advisor(Base, TenantMixin, AuditableMixin):
+    """
+    Representa a un asesor humano disponible para recibir conversaciones
+    derivadas por el bot (handoff).
+
+    El campo is_available permite que el asesor señalice su disponibilidad
+    (manualmente o mediante un endpoint futuro). El HandoffService consulta
+    este campo para decidir si hay alguien que pueda atender al cliente.
+
+    Los campos de canal (telegram_user_id, whatsapp_number, email) son
+    opcionales y se usan según el canal por donde llegó la conversación:
+    - Canales #24 (Telegram) usa telegram_user_id
+    - Canal #23 (WhatsApp) usa whatsapp_number  
+    - Fallback universal: email
+    """
+    __tablename__ = "advisors"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    is_available = Column(Boolean, default=True, nullable=False, index=True)
+
+    # Canales de contacto — al menos uno debe estar configurado
+    telegram_user_id = Column(String(100), nullable=True)   # ID numérico Telegram
+    whatsapp_number = Column(String(50), nullable=True)     # E.164 sin '+', ej: "573001234567"
+    email = Column(String(255), nullable=True)              # Fallback universal
+
