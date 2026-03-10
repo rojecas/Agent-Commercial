@@ -1,9 +1,9 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc
 
-from src.database.models import User, Conversation, Message
+from src.database.models import User, Conversation, Message, Advisor
 from src.models.message import IncomingMessage
 
 async def get_or_create_user(session: AsyncSession, message: IncomingMessage) -> User:
@@ -90,3 +90,38 @@ async def get_conversation_history(session: AsyncSession, conversation_id: int, 
         {"role": msg.role, "content": msg.content}
         for msg in chronological_msgs
     ]
+
+
+async def get_available_advisor(session: AsyncSession, tenant_id: str) -> Optional[Advisor]:
+    """
+    Retorna el primer asesor disponible para el tenant dado, o None si no hay ninguno.
+
+    La disponibilidad se controla mediante el campo is_available. En v1 es
+    gestionada manualmente (INSERT/UPDATE directo en BD). Versiones futuras
+    podrían incluir un endpoint REST para que el asesor cambie su estado.
+    """
+    stmt = select(Advisor).where(
+        Advisor.tenant_id == tenant_id,
+        Advisor.is_available == True,
+    ).limit(1)
+    result = await session.execute(stmt)
+    return result.scalars().first()
+
+
+async def set_conversation_status(session: AsyncSession, conversation_id: int, tenant_id: str, status: str) -> Conversation:
+    """
+    Cambia el status de una conversación (ej: 'active' → 'handed_off').
+
+    Valores válidos: 'active', 'handed_off', 'pending_callback', 'closed'.
+    No hace commit — el caller es responsable de session.commit().
+    """
+    stmt = select(Conversation).where(
+        Conversation.id == conversation_id,
+        Conversation.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    conversation = result.scalars().first()
+    if conversation:
+        conversation.status = status
+        await session.flush()
+    return conversation
