@@ -93,10 +93,11 @@ class HandoffService:
         # Importaciones lazy para evitar dependencias circulares
         # y mantener cada canal como módulo opcional
         from src.core.handoff.telegram_handoff_notifier import TelegramHandoffNotifier
+        from src.core.handoff.websocket_handoff_notifier import WebSocketHandoffNotifier
 
         registry: dict[str, BaseHandoffNotifier] = {
             "telegram": TelegramHandoffNotifier(),
-            # TODO #25: "websocket": WebSocketHandoffNotifier(),
+            "web": WebSocketHandoffNotifier(),
             # TODO #23-WA: "whatsapp": WhatsAppHandoffNotifier(),
         }
 
@@ -148,15 +149,27 @@ class HandoffService:
         summary = self._generate_summary(context_messages or [])
         notifier = self._get_notifier(message.platform)
 
-        advisor: Optional[Advisor] = await crud.get_available_advisor(
-            session, message.tenant_id
-        )
+        # Buscar asesor disponible — capturar errores de BD para no romper el flujo
+        advisor: Optional[Advisor] = None
+        try:
+            advisor = await crud.get_available_advisor(session, message.tenant_id)
+            if advisor:
+                logger.info(
+                    f"[HandoffService] ✅ Asesor encontrado: '{advisor.name}' "
+                    f"(id={advisor.id}) para tenant='{message.tenant_id}'."
+                )
+            else:
+                logger.info(
+                    f"[HandoffService] ⚠️  Sin asesores disponibles "
+                    f"para tenant='{message.tenant_id}'."
+                )
+        except Exception as db_err:
+            logger.error(
+                f"[HandoffService] ❌ Error consultando asesores en BD: {db_err}. "
+                f"Cayendo a flujo pending_callback."
+            )
 
         if advisor:
-            logger.info(
-                f"[HandoffService] Asesor disponible: '{advisor.name}' "
-                f"(id={advisor.id}). Iniciando handoff para conv {conversation.id}."
-            )
             await crud.set_conversation_status(
                 session, conversation.id, message.tenant_id, "handed_off"
             )
@@ -164,10 +177,6 @@ class HandoffService:
                 conversation, message, advisor, summary
             )
         else:
-            logger.info(
-                f"[HandoffService] Sin asesores disponibles. "
-                f"Usando flujo pending_callback para conv {conversation.id}."
-            )
             await crud.set_conversation_status(
                 session, conversation.id, message.tenant_id, "pending_callback"
             )

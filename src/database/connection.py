@@ -24,10 +24,10 @@ DATABASE_URL = f"mysql+aiomysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{D
 # `pool_pre_ping=True` revisa si la conexión sigue viva antes de usarla (evita errores si MySQL se reinició).
 engine = create_async_engine(
     DATABASE_URL,
-    echo=False, # Ponlo en True si quieres ver los SELECT y UPDATEs crudos en tu consola
+    echo=False,  # Cambiar a True para ver el SQL generado en desarrollo
     pool_pre_ping=True,
-    pool_size=10, # Mantiene 10 conexiones abiertas listas para usar (ideal para concurrencia)
-    max_overflow=20 # Si llegan muchos chats a la vez, puede abrir hasta 20 más temporalmente
+    pool_size=10,   # Mantiene 10 conexiones abiertas listas para usar
+    max_overflow=20  # Si llegan muchos chats a la vez, puede abrir hasta 20 más temporalmente
 )
 
 # 4. Crear la Fábrica de Sesiones (SessionMaker)
