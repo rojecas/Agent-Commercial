@@ -32,6 +32,9 @@ cryptography==42.0.5
 # Elegido para poder programar las bases de datos (Users, Messages) como "Clases" de Python (models.py) 
 # en lugar de escribir consultas crudas 'SELECT * FROM..'. Evita inyecciones SQL y facilita todo.
 sqlalchemy==2.0.28
+# alembic: Herramienta de migraciones para SQLAlchemy. 
+# Permite actualizar la estructura de la base de datos de forma segura y versionada.
+alembic==1.13.1
 
 # ==========================================
 # UTILIDADES Y CONFIGURACIÓN

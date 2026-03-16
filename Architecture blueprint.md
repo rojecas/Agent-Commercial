@@ -154,59 +154,32 @@ La migración hacia este nuevo bot requiere **modificar menos del 15% del núcle
 
 ## 🌐 5. Infraestructura por Entorno
 
-### 5.1 Entorno de Desarrollo (Local + ngrok)
+### 5.1 Entorno de Desarrollo (Dockerized)
 
-Para el desarrollo y pruebas del canal Telegram Webhook, se utiliza **ngrok** como túnel HTTPS que expone el servidor local a internet sin necesidad de un servidor público.
+Para el desarrollo y pruebas se utiliza un entorno completamente Dockerizado. Esto garantiza que la base de datos, el backend y las herramientas de gestión (phpMyAdmin) corran de forma idéntica en cualquier máquina.
 
-```
-[Bot Telegram @INASC_bot]
-[Meta WhatsApp Cloud API]
-[Widget Web (JS/WS)]
-        │
-        │  HTTPS POST/WS (webhook o websocket)
-        ▼
-https://<id>.ngrok-free.app/{webhook/telegram | webhook/whatsapp | ws/chat/*}
-        │
-        │  túnel ngrok (LAN → internet)
-        ▼
-http://127.0.0.1:8000  (uvicorn local)
-        │
-        ▼
-FastAPI Agent + asyncio.Queue + LLM (DeepSeek)
-        │
-        ▼
-MySQL local (127.0.0.1:3306, DB: comm_agent)
+```mermaid
+graph TD
+    Client[Canal Externo: Telegram/Web] -->|HTTPS/WS| Ngrok[Ngrok Tunnel]
+    Ngrok -->|Port 8000| Backend[Docker: inasc_agent_backend]
+    Backend -->|Network: db| DB[Docker: inasc_agent_db - MariaDB 10.11]
+    Developer[Desarrollador] -->|Browser: 8080| PMA[Docker: inasc_agent_pma - phpMyAdmin]
+    PMA -->|Network: db| DB
 ```
 
 **Componentes del entorno de desarrollo:**
 
-| Componente | Versión / Detalle |
-|---|---|
-| Python runtime | CPython 3.14 (local) |
-| Servidor ASGI | `uvicorn src.main:app --reload --port 8000` |
-| Túnel HTTPS | ngrok 3.36.0 (authtoken configurado) |
-| Base de datos | MySQL local |
-| LLM | DeepSeek API (`api.deepseek.com`) |
-| Bot Telegram | Token en `.env` (`TELEGRAM_BOT_TOKEN`) |
-| WhatsApp | Meta Cloud API — credenciales en `.env` (`WHATSAPP_API_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`) |
-| Widget Web | Servido en `/static/widget.html` vía `StaticFiles` |
+| Componente | Imagen / Versión | Puerto Local |
+|---|---|---|
+| **Backend** | `python:3.11-slim` (Custom) | `8000` |
+| **Base de Datos** | `mariadb:10.11` | `3307` (EXT) / `3306` (INT) |
+| **Gestión DB** | `phpmyadmin:latest` | `8080` |
+| **Túnel** | `ngrok` | Dinámico (HTTPS) |
 
-**Flujo de arranque en desarrollo:**
-```bash
-# Terminal 1: servidor Python
-python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
-
-# Terminal 2: túnel público
-ngrok http 8000
-# → copia la URL https://<id>.ngrok-free.app
-
-# Registro del webhook con Telegram (solo cuando cambia la URL):
-curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<id>.ngrok-free.app/webhook/telegram"
-
-# Registro del webhook con Meta (en developers.facebook.com > App > WhatsApp > Configuration):
-# URL:          https://<id>.ngrok-free.app/webhook/whatsapp
-# Verify Token: valor de WHATSAPP_VERIFY_TOKEN en .env
-```
+**Comandos clave:**
+- **Arranque**: `docker-compose up -d --build`
+- **Migraciones**: `docker exec inasc_agent_backend alembic upgrade head`
+- **Logs**: `docker logs -f inasc_agent_backend`
 
 ---
 

@@ -15,6 +15,16 @@ Opera en tiempo real a través de múltiples canales usando una arquitectura as�
 
 ---
 
+## 🛠️ Prerrequisitos del Sistema
+
+Para el desarrollo y pruebas de este agente, necesitas:
+
+1. **Docker & Docker Compose**: Para levantar la base de datos y el backend de forma unificada.
+2. **Ngrok**: Necesario para exponer el puerto local `8000` a internet y poder recibir Webhooks de Telegram/WhatsApp en tiempo real.
+3. **Python 3.11+**: (Opcional, si deseas correr sin Docker para debugging local).
+
+---
+
 ## 🏗️ Stack Tecnológico
 
 | Capa | Tecnología |
@@ -115,31 +125,30 @@ erDiagram
 
 ---
 
-## 🚀 Arranque Local
-
 ### 1. Configurar variables de entorno
 ```bash
 cp .env.example .env
-# Edita .env con tus credenciales
+# Edita .env con tu DEEPSEEK_API_KEY y TELEGRAM_BOT_TOKEN
 ```
 
-Variables mínimas para desarrollo:
-```env
-DEEPSEEK_API_KEY=...
-DB_URL=mysql+aiomysql://user:pass@127.0.0.1/comm_agent
-TENANT_ID=inasc_001
+### 2. Arrancar con Docker (Recomendado)
+```bash
+docker-compose up -d --build
+# Aplicar migraciones iniciales
+docker exec inasc_agent_backend alembic upgrade head
 ```
 
-### 2. Instalar dependencias, migrar BD y levantar el servidor
+### 3. Arranque Local (Legacy / Debugging)
+Si prefieres no usar Docker, asegúrate de tener una base de datos MySQL corriendo y ajusta el `DB_HOST` en el `.env`:
 ```bash
 python -m venv venv
 venv\Scripts\activate              # Windows
 pip install -r requirements.txt
-./venv/Scripts/python -m alembic upgrade head   # aplica migraciones
+./venv/Scripts/python -m alembic upgrade head
 uvicorn src.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 3. Abrir el Widget de Chat
+### 4. Abrir el Widget de Chat
 ```
 http://127.0.0.1:8000/static/widget.html
 ```

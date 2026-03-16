@@ -17,6 +17,43 @@ services:
       # Named volume para que los vectores de ChromaDB no se borren 
       # si el contenedor de borra (se almacenan en el disco virtual de Docker)
       - chromadb_data:/app/chromadb_storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:10.11
+    container_name: inasc_agent_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: comm_agent
+      MYSQL_USER: agent_user
+      MYSQL_PASSWORD: agent_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306" # Mapeo externo a 3307 para no chocar con MySQL local/XAMPP
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: inasc_agent_pma
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root_password
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   chromadb_data:
+  mysql_data:
