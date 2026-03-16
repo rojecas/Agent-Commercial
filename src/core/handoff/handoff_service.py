@@ -90,15 +90,14 @@ class HandoffService:
         Registro de notifiers. Al implementar #24 (Telegram) y #25 (WebSocket),
         se registran aquí sin tocar ningún otro código.
         """
-        # Importaciones lazy para evitar dependencias circulares
-        # y mantener cada canal como módulo opcional
         from src.core.handoff.telegram_handoff_notifier import TelegramHandoffNotifier
         from src.core.handoff.websocket_handoff_notifier import WebSocketHandoffNotifier
+        from src.core.handoff.whatsapp_handoff_notifier import WhatsAppHandoffNotifier
 
         registry: dict[str, BaseHandoffNotifier] = {
             "telegram": TelegramHandoffNotifier(),
             "web": WebSocketHandoffNotifier(),
-            # TODO #23-WA: "whatsapp": WhatsAppHandoffNotifier(),
+            "whatsapp": WhatsAppHandoffNotifier(),
         }
 
         notifier = registry.get(platform)

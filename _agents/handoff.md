@@ -10,8 +10,8 @@
 - **Alineación de Estándares**: Refactorización completa de la carpeta `_agents/` y codificación de la **Constitución del Agente**.
 
 ## ⏳ Lo que falta por implementar
-- [ ] **Issue #29**: Integración de notificador para WhatsApp.
-- [ ] **Issue #30**: Dashboard de Asesor — Interfaz bidireccional (Fase de diseño).
+- [x] **Issue #29**: Integración de notificador para WhatsApp. (#29)
+- [/] **Issue #30**: Dashboard de Asesor — Interfaz bidireccional (Fase de diseño). (#30)
 - [ ] **Issue #11**: Pool de API Keys — Optimización de Rate Limits para el LLM.
 - [ ] **Issue #6**: Extracción Dinámica de Entidades (Lead Capture).
 - [ ] **Issue #7**: Recomendaciones de Productos (Catálogo RAG).
