@@ -14,3 +14,7 @@ Soporte completo para transferencias a WhatsApp implementado.
 
 ## Estado Final
 Funcional y validado con tests automatizados.
+
+---
+> [!IMPORTANT]
+> Para el paso final a producción con la línea real, consulta la [Guía de Producción WhatsApp](file:///y:/MySource/IA/Agent-Commercial/_agents/handoffs/produccion-whatsapp.md).
