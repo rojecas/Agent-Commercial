@@ -147,10 +147,12 @@ from src.api.routers import simulator
 from src.api.routers import websocket
 from src.api.routers import telegram
 from src.api.routers import whatsapp
+from src.api.routers import dashboard
 app.include_router(simulator.router)
 app.include_router(websocket.router)
 app.include_router(telegram.router)
 app.include_router(whatsapp.router)
+app.include_router(dashboard.router)
 
 # Servir archivos estáticos del Widget JS (Issue #15)
 # Ruta relativa al propio main.py → src/static/ → expuesta en /static

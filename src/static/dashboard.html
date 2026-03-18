@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INASC — Dashboard de Asesor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --sidebar: #1e293b;
+            --header: #1e293b;
+            --accent: #3b82f6;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --success: #10b981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; }
+
+        /* Sidebar: Chat List */
+        #sidebar {
+            width: 320px;
+            background: var(--sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sidebar-header h2 { font-size: 1.1rem; }
+        #chat-list { flex: 1; overflow-y: auto; }
+        .chat-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .chat-item:hover { background: #334155; }
+        .chat-item.active { background: #3b82f633; border-left: 4px solid var(--accent); }
+        .chat-name { font-weight: 500; display: block; margin-bottom: 4px; }
+        .chat-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* Main: Chat View */
+        #main { flex: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+        #chat-header {
+            padding: 15px 25px;
+            background: var(--header);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        .message.user { align-self: flex-start; background: var(--sidebar); border: 1px solid var(--border); }
+        .message.assistant { align-self: flex-end; background: var(--accent); color: white; }
+        .message.bot { align-self: flex-start; background: #334155; border: 1px dashed var(--text-muted); font-style: italic; }
+
+        #chat-input-area {
+            padding: 20px;
+            background: var(--header);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+        #message-input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            outline: none;
+        }
+        #message-input:focus { border-color: var(--accent); }
+        button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Statuses */
+        .empty-state {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2>Chats Pendientes</h2>
+            <span id="tenant-badge" style="font-size: 0.7rem; background: #334155; padding: 2px 6px; border-radius: 4px;">Tenant: ?</span>
+        </div>
+        <div id="chat-list">
+            <!-- Dynamic chats -->
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="chat-header">
+            <div>
+                <h3 id="current-user-name">Selecciona un chat</h3>
+                <span id="current-platform" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+            </div>
+            <div id="header-actions" style="display: none;">
+                <button class="btn-success" onclick="closeConversation()">Finalizar y Devolver al Bot</button>
+            </div>
+        </div>
+
+        <div id="chat-messages">
+            <div class="empty-state">No hay ningún chat seleccionado.</div>
+        </div>
+
+        <div id="chat-input-area" style="display: none;">
+            <input type="text" id="message-input" placeholder="Escribe tu respuesta..." autofocus>
+            <button class="btn-primary" id="btn-send" onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

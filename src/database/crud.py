@@ -125,3 +125,39 @@ async def set_conversation_status(session: AsyncSession, conversation_id: int, t
         conversation.status = status
         await session.flush()
     return conversation
+
+
+async def get_handed_off_conversations(session: AsyncSession, tenant_id: str) -> List[Conversation]:
+    """
+    Retrieves all conversations with 'handed_off' status for a specific tenant.
+    Includes the related User object for each conversation.
+    """
+    from sqlalchemy.orm import joinedload
+    stmt = (
+        select(Conversation)
+        .options(joinedload(Conversation.user))
+        .where(
+            Conversation.tenant_id == tenant_id,
+            Conversation.status == "handed_off"
+        )
+        .order_by(desc(Conversation.id))
+    )
+    result = await session.execute(stmt)
+    return result.scalars().unique().all()
+
+
+async def get_conversation_messages(session: AsyncSession, conversation_id: int, tenant_id: str) -> List[Message]:
+    """
+    Retrieves all messages for a specific conversation in chronological order.
+    Used by the Advisor Dashboard to show the full transcript.
+    """
+    stmt = (
+        select(Message)
+        .where(
+            Message.conversation_id == conversation_id,
+            Message.tenant_id == tenant_id
+        )
+        .order_by(Message.id)
+    )
+    result = await session.execute(stmt)
+    return result.scalars().all()
