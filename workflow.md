@@ -94,3 +94,10 @@ docker-compose down
 ## 4. Notas sobre Webhooks en Desarrollo Local
 Dado que el agente usará **Webhooks**, servicios como Telegram y WhatsApp necesitan una URL pública (HTTPS) para enviar los mensajes a tu máquina local.
 - **Solución:** Utiliza herramientas como **Ngrok** o \`localtunnel\` para exponer el puerto interno de tu contenedor Docker (ej. 8000) a internet de forma segura durante la fase de desarrollo.
+
+
+
+## 5. Ejecutar el Agente Comercial
+
+./venv/Scripts/python -m uvicorn src.main:app --reload
+

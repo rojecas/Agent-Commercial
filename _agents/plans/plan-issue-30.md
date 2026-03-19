@@ -40,7 +40,7 @@ Lógica para:
 ### Verificación Manual
 - Iniciar una conversación vía WhatsApp/Telegram.
 - Forzar el handoff pidiendo un asesor.
-- Abrir `http://localhost:8000/static/dashboard.html`.
+- Abrir `http://localhost:8001/static/dashboard.html`.
 - Verificar que el chat aparece en la lista.
 - Responder desde el dashboard y verificar que el mensaje llega al teléfono del usuario.
 - Cerrar el caso y verificar que el bot vuelve a responder.

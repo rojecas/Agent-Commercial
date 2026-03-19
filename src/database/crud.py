@@ -56,6 +56,24 @@ async def get_or_create_active_conversation(session: AsyncSession, user_id: int,
         
     return conversation
 
+
+async def get_latest_conversation(session: AsyncSession, user_id: int, tenant_id: str) -> Optional[Conversation]:
+    """
+    Retrieves the most recent conversation for a user, regardless of its status.
+    Useful for preserving context or detecting handoff states.
+    """
+    stmt = (
+        select(Conversation)
+        .where(
+            Conversation.user_id == user_id,
+            Conversation.tenant_id == tenant_id
+        )
+        .order_by(desc(Conversation.id))
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    return result.scalars().first()
+
 async def save_message(session: AsyncSession, conversation_id: int, tenant_id: str, role: str, content: str) -> Message:
     """
     Inserts a new message (either user or agent role) into the database.

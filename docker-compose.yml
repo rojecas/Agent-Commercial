@@ -6,13 +6,13 @@ services:
     container_name: inasc_agent_backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8001"
     env_file:
       - .env
     # Se deshabilita el mapeo de volúmenes en cascada local porque Docker Desktop 
     # en Windows tiene problemas mapeando unidades de red (Letra Y:)
     # El código correrá usando el comando COPY del Dockerfile.
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload
     volumes:
       # Named volume para que los vectores de ChromaDB no se borren 
       # si el contenedor de borra (se almacenan en el disco virtual de Docker)

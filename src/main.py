@@ -31,19 +31,36 @@ async def process_single_message(message):
         async with async_session_factory() as session:
             # 1. Recuperar el contexto de la BD cruzando Tenant y Usuario
             user = await crud.get_or_create_user(session, message)
-            conversation = await crud.get_or_create_active_conversation(session, user.id, message.tenant_id)
+            
+            # Detectar si hay una conversación previa (activa o en handoff)
+            conversation = await crud.get_latest_conversation(session, user.id, message.tenant_id)
+            
+            # Si no hay ninguna, o si la última está cerrada (por ahora no cerramos), creamos una nueva.
+            if not conversation:
+                conversation = await crud.get_or_create_active_conversation(session, user.id, message.tenant_id)
+
+            # 2. Guardamos SIEMPRE el mensaje entrante del prospecto.
+            # Esto garantiza que aparezca en el Advisor Dashboard aunque el bot no responda.
+            await crud.save_message(session, conversation.id, message.tenant_id, role="user", content=message.content)
 
             # [HANDOFF] Verificar si la conversación ya fue transferida o está pendiente.
             # Si es así, el bot NO responde — el asesor humano tiene el control.
             if conversation.status in ("handed_off", "pending_callback"):
                 logger.info(
                     f"[{message.tenant_id}] 🔇 Conv {conversation.id} silenciada "
-                    f"(status='{conversation.status}'). Bot no responde."
+                    f"(status='{conversation.status}'). Bot no responde pero mensaje guardado."
                 )
+                await session.commit()
+                # Notificar al dashboard en tiempo real vía WebSocket
+                await connection_manager.notify_advisors(message.tenant_id, {
+                    "type": "new_message",
+                    "conversation_id": conversation.id,
+                    "message": {
+                        "role": "user",
+                        "content": message.content
+                    }
+                })
                 return
-
-            # 2. Guardamos el mensaje entrante del prospecto
-            await crud.save_message(session, conversation.id, message.tenant_id, role="user", content=message.content)
 
             # 3. Recuperamos el historial de memoria dinámico (Últimos 10 mensajes)
             context = await crud.get_conversation_history(session, conversation.id, message.tenant_id, limit=10)

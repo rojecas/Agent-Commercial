@@ -38,9 +38,12 @@ async function sendMessage() {
     const content = input.value.trim();
     if (!content || !currentConversationId) return;
 
+    const btn = document.getElementById('btn-send');
+
     input.value = '';
     input.placeholder = 'Enviando...';
     input.disabled = true;
+    if (btn) btn.disabled = true;
 
     try {
         const response = await fetch(`/api/dashboard/conversations/${currentConversationId}/reply`, {
@@ -62,6 +65,7 @@ async function sendMessage() {
     } finally {
         input.placeholder = 'Escribe tu respuesta...';
         input.disabled = false;
+        if (btn) btn.disabled = false;
         input.focus();
     }
 }
@@ -77,8 +81,8 @@ async function closeConversation() {
         
         if (response.ok) {
             currentConversationId = null;
-            document.getElementById('header-actions').style.display = 'none';
-            document.getElementById('chat-input-area').style.display = 'none';
+            document.getElementById('header-actions').style.visibility = 'hidden';
+            document.getElementById('chat-input-area').style.visibility = 'hidden';
             document.getElementById('chat-messages').innerHTML = '<div class="empty-state">Conversación cerrada.</div>';
             fetchConversations();
         }
@@ -97,8 +101,8 @@ function renderChatList(conversations) {
         const div = document.createElement('div');
         div.className = `chat-item ${currentConversationId == conv.id ? 'active' : ''}`;
         div.innerHTML = `
-            <span class="chat-name">${conv.full_name || 'Anónimo'}</span>
-            <div class="chat-meta">${conv.platform.toUpperCase()} · ${conv.platform_user_id}</div>
+            <span class="chat-name">${conv.user.full_name || 'Anónimo'}</span>
+            <div class="chat-meta">${conv.user.platform.toUpperCase()} · ${conv.user.platform_user_id}</div>
         `;
         div.onclick = () => selectChat(conv);
         list.appendChild(div);
@@ -107,10 +111,10 @@ function renderChatList(conversations) {
 
 function selectChat(conv) {
     currentConversationId = conv.id;
-    document.getElementById('current-user-name').innerText = conv.full_name || 'Anónimo';
-    document.getElementById('current-platform').innerText = conv.platform.toUpperCase();
-    document.getElementById('header-actions').style.display = 'block';
-    document.getElementById('chat-input-area').style.display = 'flex';
+    document.getElementById('current-user-name').innerText = conv.user.full_name || 'Anónimo';
+    document.getElementById('current-platform').innerText = conv.user.platform.toUpperCase();
+    document.getElementById('header-actions').style.visibility = 'visible';
+    document.getElementById('chat-input-area').style.visibility = 'visible';
     
     // Refresh selection highlight
     fetchConversations();
@@ -132,10 +136,54 @@ function renderMessages(messages) {
     container.scrollTop = container.scrollHeight;
 }
 
-// --- Init ---
+// --- Real-time WebSocket Logic ---
 
+let socket = null;
+
+function initWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/dashboard/ws?tenant_id=${tenantId}`;
+    
+    console.log("[WS] Connecting to:", wsUrl);
+    socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+        console.log("[WS] Connected successfully.");
+        document.getElementById('tenant-badge').style.color = '#00b33f';
+    };
+
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log("[WS] Message received:", data);
+
+        if (data.type === 'new_message') {
+            // Actualizar la lista lateral siempre
+            fetchConversations();
+
+            // Si es el chat abierto, añadir el mensaje a la ventana
+            if (currentConversationId == data.conversation_id) {
+                // Opción A: Recargar todo (más seguro por ahora)
+                loadMessages(currentConversationId);
+                // Opción B: Append manual (más rápido, pero requiere coherencia de datos)
+                // appendMessage(data.message);
+            }
+        }
+    };
+
+    socket.onclose = () => {
+        console.warn("[WS] Connection closed. Retrying in 5s...");
+        document.getElementById('tenant-badge').style.color = '#ef4444';
+        setTimeout(initWebSocket, 5000);
+    };
+
+    socket.onerror = (err) => {
+        console.error("[WS] Error:", err);
+    };
+}
+
+// Inicialización
 fetchConversations();
-setInterval(fetchConversations, 5000); // Polling cada 5 segs
+initWebSocket();
 
 // Send with Enter
 document.getElementById('message-input').addEventListener('keypress', (e) => {

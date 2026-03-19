@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
@@ -130,3 +130,31 @@ async def close_conversation(
     
     await db.commit()
     return {"ok": True, "status": "active"}
+
+@router.websocket("/ws")
+async def dashboard_websocket(
+    websocket: WebSocket,
+    tenant_id: str = "inasc_001" # Default para v1, idealmente pasar por query param o header
+):
+    """
+    WebSocket para el Dashboard de Asesor Humano.
+    Permite recibir notificaciones de nuevos mensajes en tiempo real.
+    """
+    # El tenant_id debería validarse/obtenerse de forma segura.
+    # Por ahora lo tomamos de los query params si vienen, sino default.
+    query_params = websocket.query_params
+    actual_tenant = query_params.get("tenant_id", tenant_id)
+
+    await connection_manager.connect_advisor(actual_tenant, websocket)
+    
+    try:
+        while True:
+            # Mantener la conexión viva y escuchar por si el cliente envía algo (opcional)
+            data = await websocket.receive_text()
+            # Podríamos procesar comandos desde el dashboard aquí si fuera necesario
+            pass
+    except WebSocketDisconnect:
+        connection_manager.disconnect_advisor(actual_tenant, websocket)
+    except Exception as e:
+        logger.error(f"[DashboardWS] Error: {e}")
+        connection_manager.disconnect_advisor(actual_tenant, websocket)

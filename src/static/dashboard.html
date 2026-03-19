@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
             --inasc-green: #00b33f;
@@ -118,33 +119,58 @@
         }
 
         #chat-input-area {
-            padding: 20px;
-            background: var(--header);
+            padding: 15px 25px;
+            background: #fff;
             border-top: 1px solid var(--border);
             display: flex;
-            gap: 10px;
+            align-items: center;
+            gap: 15px;
         }
         #message-input {
             flex: 1;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            padding: 10px 15px;
-            border-radius: 8px;
-            color: white;
+            background: #f8fafc;
+            border: 2px solid var(--border);
+            padding: 12px 18px;
+            border-radius: 25px;
+            color: var(--text);
             outline: none;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.2s;
         }
-        #message-input:focus { border-color: var(--accent); }
-        button {
-            padding: 10px 20px;
-            border-radius: 8px;
+        #message-input:focus { border-color: var(--inasc-green); background: #fff; box-shadow: 0 0 0 4px rgba(0, 179, 63, 0.1); }
+        
+        .btn-send {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--inasc-green);
+            color: white;
             border: none;
             cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 179, 63, 0.2);
+            font-size: 1.1rem;
         }
-        .btn-primary { background: var(--accent); color: white; }
-        .btn-success { background: var(--success); color: white; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-send:hover { background: var(--inasc-green-dark); transform: scale(1.05); }
+        .btn-send:active { transform: scale(0.95); }
+        .btn-send:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; }
+
+        .btn-success { 
+            background: var(--success); 
+            color: white; 
+            padding: 8px 16px; 
+            border-radius: 6px; 
+            font-weight: 600; 
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-success:hover { opacity: 0.9; }
 
         /* Statuses */
         .empty-state {
@@ -177,8 +203,10 @@
                 <h3 id="current-user-name">Selecciona un chat</h3>
                 <span id="current-platform" style="font-size: 0.8rem; color: var(--text-muted);"></span>
             </div>
-            <div id="header-actions" style="display: none;">
-                <button class="btn-success" onclick="closeConversation()">Finalizar y Devolver al Bot</button>
+            <div id="header-actions" style="visibility: hidden;">
+                <button class="btn-success" onclick="closeConversation()">
+                    <i class="fas fa-check-circle"></i> Finalizar y Devolver al Bot
+                </button>
             </div>
         </div>
 
@@ -186,9 +214,11 @@
             <div class="empty-state">No hay ningún chat seleccionado.</div>
         </div>
 
-        <div id="chat-input-area" style="display: none;">
+        <div id="chat-input-area" style="visibility: hidden;">
             <input type="text" id="message-input" placeholder="Escribe tu respuesta..." autofocus>
-            <button class="btn-primary" id="btn-send" onclick="sendMessage()">Enviar</button>
+            <button class="btn-send" id="btn-send" onclick="sendMessage()" title="Enviar mensaje">
+                <i class="fas fa-paper-plane"></i>
+            </button>
         </div>
     </div>
 
